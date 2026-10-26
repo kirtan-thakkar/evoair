@@ -3,13 +3,32 @@ import { db } from '../config/db.js';
 import { orders, orderItems, productVariants, products } from '../db/schema.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 
-// TODO: placeholder until the shipping rule and GST handling are decided
+// Complimentary luxury shipping
 const SHIPPING_FLAT_PAISE = 0;
+
+/**
+ * Calculates dynamic expected delivery date: 5 business days (skipping Sundays)
+ */
+export const calculateExpectedDeliveryDate = (startDate = new Date()) => {
+  const d = new Date(startDate);
+  let daysAdded = 0;
+  while (daysAdded < 5) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0) {
+      daysAdded++;
+    }
+  }
+  return d;
+};
 
 const areItemsMatching = (existingItems, requestedItems) => {
   if (existingItems.length !== requestedItems.length) return false;
-  const sortedExisting = [...existingItems].sort((a, b) => a.variant_id - b.variant_id);
-  const sortedRequested = [...requestedItems].sort((a, b) => a.variantId - b.variantId);
+  const sortedExisting = [...existingItems].sort((a, b) =>
+    String(a.variant_id).localeCompare(String(b.variant_id))
+  );
+  const sortedRequested = [...requestedItems].sort((a, b) =>
+    String(a.variantId).localeCompare(String(b.variantId))
+  );
   return sortedExisting.every(
     (item, index) =>
       item.variant_id === sortedRequested[index].variantId &&
@@ -27,6 +46,7 @@ const findExistingOrderWithItems = async (queryDb, userId, idempotencyKey) => {
       shipping_paise: orders.shipping_paise,
       total_paise: orders.total_paise,
       shipping_address: orders.shipping_address,
+      expected_delivery_date: orders.expected_delivery_date,
       razorpay_order_id: orders.razorpay_order_id,
       idempotency_key: orders.idempotency_key,
       created_at: orders.created_at,
@@ -58,9 +78,10 @@ const findExistingOrderWithItems = async (queryDb, userId, idempotencyKey) => {
 export const createOrder = async (userId, idempotencyKey, { items, shippingAddress }) => {
   try {
     const result = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(${userId}::int, hashtext(${idempotencyKey}))`);
+      // 1. Transaction Advisory Lock on (userId hash, idempotencyKey hash)
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${idempotencyKey}))`);
 
-      // 1. Idempotency check inside transaction
+      // 2. Idempotency check inside transaction
       const existingOrder = await findExistingOrderWithItems(tx, userId, idempotencyKey);
       if (existingOrder) {
         if (!areItemsMatching(existingOrder.items, items)) {
@@ -69,7 +90,7 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
         return { order: existingOrder, isExisting: true };
       }
 
-      // 2. Load all requested variants in one query with active products
+      // 3. Load all requested variants in one query with active products
       const variantIds = items.map((i) => i.variantId);
       const dbVariants = await tx
         .select({
@@ -89,7 +110,7 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
 
       const variantMap = new Map(dbVariants.map((v) => [v.variantId, v]));
 
-      // Verify all requested variants exist, are active, and product is active
+      // Verify all requested variants exist and are active
       const unavailableVariantIds = [];
       for (const id of variantIds) {
         const v = variantMap.get(id);
@@ -105,39 +126,28 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
         );
       }
 
-      // 3. Sort items by variantId ascending (prevents deadlocks)
-      const sortedItems = [...items].sort((a, b) => a.variantId - b.variantId);
+      // 4. Sort items by variantId string ascending (prevents deadlocks)
+      const sortedItems = [...items].sort((a, b) =>
+        String(a.variantId).localeCompare(String(b.variantId))
+      );
 
-      // Atomic conditional update
-      const insufficientVariantIds = [];
+      // 5. Stock Update (Backorder Allowed - Mentor Directive 1)
+      // Decrement stock down to 0; do NOT block customer order if stock reaches 0
       for (const item of sortedItems) {
-        const updated = await tx
+        await tx
           .update(productVariants)
           .set({
-            stock_qty: sql`${productVariants.stock_qty} - ${item.quantity}`,
+            stock_qty: sql`GREATEST(0, ${productVariants.stock_qty} - ${item.quantity})`,
           })
           .where(
             and(
               eq(productVariants.id, item.variantId),
-              eq(productVariants.is_active, true),
-              sql`${productVariants.stock_qty} >= ${item.quantity}`
+              eq(productVariants.is_active, true)
             )
-          )
-          .returning({ id: productVariants.id });
-
-        if (updated.length === 0) {
-          insufficientVariantIds.push(item.variantId);
-        }
+          );
       }
 
-      if (insufficientVariantIds.length > 0) {
-        throw new AppError(
-          `Insufficient stock for variants: ${insufficientVariantIds.join(', ')}`,
-          409
-        );
-      }
-
-      // 4. Compute totals on server from DB prices
+      // 6. Compute totals on server from DB prices
       const subtotal_paise = items.reduce((acc, item) => {
         const v = variantMap.get(item.variantId);
         return acc + v.pricePaise * item.quantity;
@@ -145,7 +155,10 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
       const shipping_paise = SHIPPING_FLAT_PAISE;
       const total_paise = subtotal_paise + shipping_paise;
 
-      // 5. Insert order
+      // 7. Calculate dynamic expected delivery date (Mentor Directive 2)
+      const expected_delivery_date = calculateExpectedDeliveryDate();
+
+      // 8. Insert order
       const [insertedOrder] = await tx
         .insert(orders)
         .values({
@@ -155,6 +168,7 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           shipping_paise,
           total_paise,
           shipping_address: shippingAddress,
+          expected_delivery_date,
           razorpay_order_id: null,
           idempotency_key: idempotencyKey,
         })
@@ -166,12 +180,13 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           shipping_paise: orders.shipping_paise,
           total_paise: orders.total_paise,
           shipping_address: orders.shipping_address,
+          expected_delivery_date: orders.expected_delivery_date,
           razorpay_order_id: orders.razorpay_order_id,
           idempotency_key: orders.idempotency_key,
           created_at: orders.created_at,
         });
 
-      // 6. Insert order items
+      // 9. Insert order items
       const itemsToInsert = items.map((item) => ({
         order_id: insertedOrder.id,
         variant_id: item.variantId,
@@ -202,7 +217,7 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
 
     return result;
   } catch (err) {
-    // 7. Race condition on idempotency key
+    // Race condition on idempotency key
     const pgCode = err.code ?? err.cause?.code;
     if (pgCode === '23505') {
       const racedOrder = await findExistingOrderWithItems(db, userId, idempotencyKey);
@@ -227,13 +242,14 @@ export const getUserOrders = async (userId) => {
       shipping_paise: orders.shipping_paise,
       total_paise: orders.total_paise,
       shipping_address: orders.shipping_address,
+      expected_delivery_date: orders.expected_delivery_date,
       razorpay_order_id: orders.razorpay_order_id,
       idempotency_key: orders.idempotency_key,
       created_at: orders.created_at,
     })
     .from(orders)
     .where(eq(orders.user_id, userId))
-    .orderBy(desc(orders.id))
+    .orderBy(desc(orders.created_at))
     .limit(50);
 
   if (userOrders.length === 0) {
@@ -278,6 +294,7 @@ export const getUserOrderById = async (userId, orderId) => {
       shipping_paise: orders.shipping_paise,
       total_paise: orders.total_paise,
       shipping_address: orders.shipping_address,
+      expected_delivery_date: orders.expected_delivery_date,
       razorpay_order_id: orders.razorpay_order_id,
       idempotency_key: orders.idempotency_key,
       created_at: orders.created_at,

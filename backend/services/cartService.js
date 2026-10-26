@@ -51,12 +51,9 @@ export const getUserCart = async (userId, txOrDb = db) => {
   let total_count = 0;
 
   const items = rows.map((row) => {
-    const isAvailable =
-      row.variant_is_active && row.product_is_active && row.stock_qty >= row.quantity;
-    const maxQuantity =
-      row.variant_is_active && row.product_is_active
-        ? Math.max(0, Math.min(row.stock_qty, 10))
-        : 0;
+    // Backorder Mode (Mentor Directive 1): Active products are always purchaseable
+    const isAvailable = row.variant_is_active && row.product_is_active;
+    const maxQuantity = isAvailable ? 10 : 0;
     const lineTotal = isAvailable ? row.price_paise * row.quantity : 0;
 
     if (isAvailable) {
@@ -116,21 +113,17 @@ export const updateCartItem = async (userId, variantId, quantity) => {
       throw new AppError('Product variant is unavailable or inactive', 409);
     }
 
-    if (variant.stock_qty < quantity) {
-      throw new AppError(`Only ${variant.stock_qty} units available in stock`, 409);
-    }
-
     await db
       .insert(cartItems)
       .values({
         cart_id: cart.id,
         variant_id: variantId,
-        quantity,
+        quantity: Math.min(quantity, 10),
       })
       .onConflictDoUpdate({
         target: [cartItems.cart_id, cartItems.variant_id],
         set: {
-          quantity,
+          quantity: Math.min(quantity, 10),
           updated_at: sql`now()`,
         },
       });
