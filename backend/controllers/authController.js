@@ -1,5 +1,5 @@
 import * as authService from '../services/authService.js';
-import { registerSchema, loginSchema } from '../validators/authValidators.js';
+import { registerSchema, loginSchema, googleAuthSchema } from '../validators/authValidators.js';
 import { env } from '../config/env.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 
@@ -23,7 +23,8 @@ const getClearCookieOptions = () => ({
 const validate = (schema, data) => {
   const result = schema.safeParse(data);
   if (!result.success) {
-    const formatted = result.error.errors.map((e) => ({
+    const issues = result.error?.issues || result.error?.errors || [];
+    const formatted = issues.map((e) => ({
       field: e.path.join('.'),
       message: e.message,
     }));
@@ -50,6 +51,17 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const validatedData = validate(loginSchema, req.body);
   const { accessToken, refreshToken, user } = await authService.loginUser(validatedData);
+
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, getCookieOptions());
+  res.status(200).json({
+    status: 'success',
+    data: { user, accessToken },
+  });
+});
+
+export const googleAuth = asyncHandler(async (req, res) => {
+  const validatedData = validate(googleAuthSchema, req.body);
+  const { accessToken, refreshToken, user } = await authService.googleLogin(validatedData.credential);
 
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, getCookieOptions());
   res.status(200).json({

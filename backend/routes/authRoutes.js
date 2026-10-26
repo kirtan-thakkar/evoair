@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/authenticate.js';
 
 const router = express.Router();
 
-// Strict rate limiting for auth endpoints (register and login)
+// Strict rate limiting for auth endpoints (register, login, google)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
@@ -17,9 +17,10 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate-limited endpoints (Rule 1)
+// Rate-limited endpoints
 router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
+router.post('/google', authLimiter, authController.googleAuth);
 
 // Non rate-limited endpoints
 router.post('/refresh', authController.refresh);
