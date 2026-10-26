@@ -232,10 +232,21 @@ const Cart = () => {
               <div className="cart-empty-icon" style={{ borderColor: 'rgba(66, 252, 255, 0.4)', color: '#42fcff' }}>
                 ✓
               </div>
-              <h2 className="cart-empty-heading">Order #{orderComplete.id} Created</h2>
-              <p className="cart-empty-sub" style={{ marginBottom: '14px' }}>
-                Your order is registered in status <strong>{orderComplete.status}</strong>. Total: <strong>₹{(orderComplete.total_amount_paise / 100).toLocaleString('en-IN')}</strong>.
+              <h2 className="cart-empty-heading">Order Placed Successfully</h2>
+              <p className="cart-empty-sub" style={{ marginBottom: '8px' }}>
+                Order ID: <code style={{ color: '#42fcff', fontSize: '12px' }}>{orderComplete.id}</code>
               </p>
+              <p className="cart-empty-sub" style={{ marginBottom: '14px' }}>
+                Status: <strong>{orderComplete.status}</strong> · Total: <strong>₹{(orderComplete.total_paise / 100).toLocaleString('en-IN')}</strong>
+              </p>
+              <div style={{ background: 'rgba(66, 252, 255, 0.06)', border: '1px solid rgba(66, 252, 255, 0.25)', borderRadius: '12px', padding: '12px 20px', maxWidth: '420px', margin: '0 auto 20px auto' }}>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#42fcff', display: 'block', marginBottom: '4px' }}>Expected Delivery</span>
+                <span style={{ fontSize: '15px', color: '#fff', fontWeight: 500 }}>
+                  {orderComplete.expected_delivery_date
+                    ? new Date(orderComplete.expected_delivery_date).toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })
+                    : 'Within 4–6 Business Days'}
+                </span>
+              </div>
               <p style={{ fontSize: '13px', color: '#a0a0a5', maxWidth: '440px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
                 Items are securely reserved in your database. Razorpay payment integration will be activated in the next phase.
               </p>
@@ -531,6 +542,10 @@ const Cart = () => {
                     </div>
                   ))
                 )}
+                <div className="ck-review-total-row">
+                  <span>Estimated Delivery</span>
+                  <span style={{ color: '#42fcff', fontSize: '13px', fontWeight: 400 }}>4–6 Business Days (Complimentary)</span>
+                </div>
                 <div className="ck-review-total-row">
                   <span>Total Amount</span>
                   <span>₹{((serverCart?.total_paise || 0) / 100).toLocaleString('en-IN')}</span>

@@ -6,57 +6,72 @@ const PRIMARY_CART_KEY = 'evoair_cart';
 const LEGACY_CART_KEY = 'evoluir_cart';
 const CART_EVENT = 'evoair_cart_updated';
 
+export const SEED_VARIANT_UUIDS = {
+  'EVO-01': '11111111-1111-4111-8111-000000000001',
+  'EVO-02': '11111111-1111-4111-8111-000000000002',
+  'EVO-03': '11111111-1111-4111-8111-000000000003',
+  'EVO-04': '11111111-1111-4111-8111-000000000004',
+  'EVO-05': '11111111-1111-4111-8111-000000000005',
+  'EVO-06': '11111111-1111-4111-8111-000000000006',
+  'EVO-07': '11111111-1111-4111-8111-000000000007',
+  'EVO-08': '11111111-1111-4111-8111-000000000008',
+  'EVO-09': '11111111-1111-4111-8111-000000000009',
+  'EVO-10': '11111111-1111-4111-8111-000000000010',
+  'EVO-FILL-10': '11111111-1111-4111-8111-000000000051',
+  'EVO-BOTTLE-20': '11111111-1111-4111-8111-000000000052',
+};
+
 /**
- * Maps frontend shade/accessory data to positive integer PostgreSQL variantId
+ * Maps frontend shade/accessory data to PostgreSQL variant UUID
  */
 export const resolveVariantId = (item) => {
-  if (item.variantId && Number.isInteger(Number(item.variantId))) {
-    return Number(item.variantId);
+  if (item.variantId && typeof item.variantId === 'string' && item.variantId.length >= 30) {
+    return item.variantId;
   }
-  if (item.variant_id && Number.isInteger(Number(item.variant_id))) {
-    return Number(item.variant_id);
+  if (item.variant_id && typeof item.variant_id === 'string' && item.variant_id.length >= 30) {
+    return item.variant_id;
   }
   if (item.id === 'evo-bottles-empty-pack' || item.name?.includes('Evo-Bottles')) {
-    return 52;
+    return SEED_VARIANT_UUIDS['EVO-BOTTLE-20'];
   }
   if (item.id === 'evofills' || item.name?.includes('Evo-Fills')) {
-    return 51;
+    return SEED_VARIANT_UUIDS['EVO-FILL-10'];
   }
 
   const codeMap = {
-    '02': 1,
-    '03': 2,
-    '06': 3,
-    '07': 4,
-    '10': 5,
-    '11': 6,
-    '14': 7,
-    '15': 8,
-    '18': 9,
-    '19': 10,
+    '02': SEED_VARIANT_UUIDS['EVO-01'],
+    '03': SEED_VARIANT_UUIDS['EVO-02'],
+    '06': SEED_VARIANT_UUIDS['EVO-03'],
+    '07': SEED_VARIANT_UUIDS['EVO-04'],
+    '10': SEED_VARIANT_UUIDS['EVO-05'],
+    '11': SEED_VARIANT_UUIDS['EVO-06'],
+    '14': SEED_VARIANT_UUIDS['EVO-07'],
+    '15': SEED_VARIANT_UUIDS['EVO-08'],
+    '18': SEED_VARIANT_UUIDS['EVO-09'],
+    '19': SEED_VARIANT_UUIDS['EVO-10'],
   };
   if (item.shadeCode && codeMap[item.shadeCode]) {
     return codeMap[item.shadeCode];
   }
 
   const nameMap = {
-    halo: 1,
-    flare: 2,
-    serene: 3,
-    astra: 4,
-    amber: 5,
-    dawn: 6,
-    cosmic: 7,
-    stardusk: 8,
-    galaxy: 9,
-    nebula: 10,
+    halo: SEED_VARIANT_UUIDS['EVO-01'],
+    flare: SEED_VARIANT_UUIDS['EVO-02'],
+    serene: SEED_VARIANT_UUIDS['EVO-03'],
+    astra: SEED_VARIANT_UUIDS['EVO-04'],
+    amber: SEED_VARIANT_UUIDS['EVO-05'],
+    dawn: SEED_VARIANT_UUIDS['EVO-06'],
+    cosmic: SEED_VARIANT_UUIDS['EVO-07'],
+    stardusk: SEED_VARIANT_UUIDS['EVO-08'],
+    galaxy: SEED_VARIANT_UUIDS['EVO-09'],
+    nebula: SEED_VARIANT_UUIDS['EVO-10'],
   };
   const lower = (item.shadeName || '').toLowerCase().trim();
   if (lower && nameMap[lower]) {
     return nameMap[lower];
   }
 
-  return 1; // Default fallback to Halo
+  return SEED_VARIANT_UUIDS['EVO-01']; // Default fallback to Halo
 };
 
 export const getCart = () => {

@@ -109,7 +109,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 4. Logout
+  // 4. Google Login
+  const loginWithGoogle = async (credential) => {
+    setLoading(true);
+    try {
+      const res = await api.post('/api/v1/auth/google', { credential });
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.message || 'Google authentication failed');
+      }
+
+      const { user: userProfile, accessToken: token } = json.data;
+      handleTokenUpdate(token, userProfile);
+      return userProfile;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 5. Logout
   const logout = async () => {
     setLoading(true);
     try {
@@ -129,6 +148,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: Boolean(user && accessToken),
     login,
+    loginWithGoogle,
     register,
     logout,
   };
