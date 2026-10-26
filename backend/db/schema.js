@@ -1,5 +1,6 @@
 import {
   pgTable,
+  uuid,
   integer,
   varchar,
   text,
@@ -24,11 +25,13 @@ export const orderStatusEnum = pgEnum('order_status', [
   'cancelled',
 ]);
 
-// 1. Users
+// 1. Users (supports email/password and Google OAuth)
 export const users = pgTable('users', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  password_hash: text('password_hash').notNull(),
+  password_hash: text('password_hash'), // Nullable for OAuth users
+  google_id: varchar('google_id', { length: 255 }).unique(),
+  avatar_url: text('avatar_url'),
   name: text('name').notNull(),
   phone: varchar('phone', { length: 20 }),
   role: roleEnum('role').default('customer').notNull(),
@@ -38,9 +41,9 @@ export const users = pgTable('users', {
 
 // 2. Addresses
 export const addresses = pgTable('addresses', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  user_id: integer('user_id')
-    .references(() => users.id)
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
   name: text('name').notNull(),
   phone: varchar('phone', { length: 20 }).notNull(),
@@ -55,7 +58,7 @@ export const addresses = pgTable('addresses', {
 
 // 3. Products
 export const products = pgTable('products', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   description: text('description'),
@@ -67,9 +70,9 @@ export const products = pgTable('products', {
 export const productVariants = pgTable(
   'product_variants',
   {
-    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    product_id: integer('product_id')
-      .references(() => products.id)
+    id: uuid('id').defaultRandom().primaryKey(),
+    product_id: uuid('product_id')
+      .references(() => products.id, { onDelete: 'cascade' })
       .notNull(),
     shade_name: text('shade_name').notNull(),
     shade_code: varchar('shade_code', { length: 50 }).notNull(),
@@ -85,12 +88,12 @@ export const productVariants = pgTable(
   ]
 );
 
-// 5. Orders
+// 5. Orders (Includes Expected Delivery Date)
 export const orders = pgTable(
   'orders',
   {
-    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    user_id: integer('user_id')
+    id: uuid('id').defaultRandom().primaryKey(),
+    user_id: uuid('user_id')
       .references(() => users.id)
       .notNull(),
     status: orderStatusEnum('status').default('pending_payment').notNull(),
@@ -98,6 +101,7 @@ export const orders = pgTable(
     shipping_paise: integer('shipping_paise').notNull(),
     total_paise: integer('total_paise').notNull(),
     shipping_address: jsonb('shipping_address').notNull(),
+    expected_delivery_date: timestamp('expected_delivery_date', { withTimezone: true }),
     razorpay_order_id: varchar('razorpay_order_id', { length: 255 }),
     idempotency_key: varchar('idempotency_key', { length: 255 }).notNull(),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -112,11 +116,11 @@ export const orders = pgTable(
 export const orderItems = pgTable(
   'order_items',
   {
-    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    order_id: integer('order_id')
-      .references(() => orders.id)
+    id: uuid('id').defaultRandom().primaryKey(),
+    order_id: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
       .notNull(),
-    variant_id: integer('variant_id')
+    variant_id: uuid('variant_id')
       .references(() => productVariants.id)
       .notNull(),
     quantity: integer('quantity').notNull(),
@@ -131,8 +135,8 @@ export const orderItems = pgTable(
 
 // 7. Payments
 export const payments = pgTable('payments', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  order_id: integer('order_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  order_id: uuid('order_id')
     .references(() => orders.id)
     .notNull(),
   razorpay_payment_id: varchar('razorpay_payment_id', { length: 255 }).notNull().unique(),
@@ -144,20 +148,21 @@ export const payments = pgTable('payments', {
 
 // 8. Shipments
 export const shipments = pgTable('shipments', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  order_id: integer('order_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  order_id: uuid('order_id')
     .references(() => orders.id)
     .notNull(),
   courier: text('courier'),
   awb: text('awb'),
   status: varchar('status', { length: 50 }).notNull(),
+  expected_delivery_date: timestamp('expected_delivery_date', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 // 9. Carts
 export const carts = pgTable('carts', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  user_id: integer('user_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull()
     .unique(),
@@ -169,11 +174,11 @@ export const carts = pgTable('carts', {
 export const cartItems = pgTable(
   'cart_items',
   {
-    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    cart_id: integer('cart_id')
+    id: uuid('id').defaultRandom().primaryKey(),
+    cart_id: uuid('cart_id')
       .references(() => carts.id, { onDelete: 'cascade' })
       .notNull(),
-    variant_id: integer('variant_id')
+    variant_id: uuid('variant_id')
       .references(() => productVariants.id, { onDelete: 'cascade' })
       .notNull(),
     quantity: integer('quantity').notNull(),
