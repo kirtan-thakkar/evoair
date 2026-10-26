@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { uuidSchema } from './commonValidators.js';
 
 export const cartItemUpdateSchema = z.object({
-  variantId: z.number().int().positive('variantId must be a positive integer'),
+  variantId: uuidSchema,
   quantity: z
     .number()
     .int()
@@ -10,15 +11,11 @@ export const cartItemUpdateSchema = z.object({
 });
 
 export const cartVariantParamSchema = z.object({
-  variantId: z
-    .string()
-    .regex(/^\d+$/, 'variantId must be a positive integer')
-    .transform(Number)
-    .refine((n) => n > 0, 'variantId must be a positive integer'),
+  variantId: uuidSchema,
 });
 
 export const cartSyncItemSchema = z.object({
-  variantId: z.number().int().positive('variantId must be a positive integer'),
+  variantId: uuidSchema,
   quantity: z
     .number()
     .int()

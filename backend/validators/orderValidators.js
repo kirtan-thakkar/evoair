@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uuidSchema } from './commonValidators.js';
 
 export const idempotencyKeyHeaderSchema = z
   .string({ required_error: 'Idempotency-Key header is required' })
@@ -49,7 +50,7 @@ export const orderAddressSchema = z.object({
 });
 
 export const orderItemInputSchema = z.object({
-  variantId: z.number().int().positive('variantId must be a positive integer'),
+  variantId: uuidSchema,
   quantity: z
     .number()
     .int()
@@ -75,5 +76,5 @@ export const createOrderSchema = z.object({
 });
 
 export const orderIdParamSchema = z.object({
-  id: z.coerce.number().int().positive('Order ID must be a positive integer'),
+  id: uuidSchema,
 });

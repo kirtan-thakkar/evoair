@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { uuidSchema } from './commonValidators.js';
 
 export const cartItemSchema = z.object({
-  variantId: z.number().int().positive('variantId must be a positive integer'),
+  variantId: uuidSchema,
   quantity: z
     .number()
     .int()
