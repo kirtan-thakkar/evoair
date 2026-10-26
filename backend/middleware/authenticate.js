@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { UnauthorizedError } from '../utils/errors.js';
+import { uuidSchema } from '../validators/commonValidators.js';
 
 export const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -13,13 +14,13 @@ export const authenticate = (req, res, next) => {
   try {
     const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
 
-    const userId = Number(payload.sub);
-    if (!Number.isInteger(userId) || userId <= 0) {
+    const subValidation = uuidSchema.safeParse(payload.sub);
+    if (!subValidation.success) {
       return next(new UnauthorizedError('Invalid user ID in access token'));
     }
 
     req.user = {
-      id: userId,
+      id: subValidation.data,
       role: payload.role,
     };
 
