@@ -6,6 +6,8 @@ import pinoHttp from 'pino-http';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -17,6 +19,10 @@ import orderRoutes from './routes/orderRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDist = path.join(__dirname, '../frontend/dist');
+
 const app = express();
 
 // Trust proxy for reverse proxies / AWS ALB (when hops > 0)
@@ -24,8 +30,13 @@ if (env.TRUST_PROXY_HOPS > 0) {
   app.set('trust proxy', env.TRUST_PROXY_HOPS);
 }
 
-// 1. Security Headers
-app.use(helmet());
+// 1. Security Headers (configured to allow 3D models, WASM, and web fonts)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // 2. CORS (Strict allowed origin with credentials)
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
@@ -94,7 +105,23 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 
-// Catch-all for unknown routes
+// --- STATIC FRONTEND SERVING (UNIFIED CONTAINER / EC2) ---
+// Serve frontend static assets (CSS, JS, 3D models, fonts, audio, video)
+app.use(express.static(frontendDist));
+app.use('/Evoair', express.static(frontendDist));
+
+// Multi-page entrypoints
+app.get(['/products', '/products.html', '/Evoair/products', '/Evoair/products.html'], (req, res) => {
+  res.sendFile(path.join(frontendDist, 'products.html'));
+});
+app.get(['/cart', '/cart.html', '/Evoair/cart', '/Evoair/cart.html'], (req, res) => {
+  res.sendFile(path.join(frontendDist, 'cart.html'));
+});
+app.get(['/', '/index.html', '/Evoair', '/Evoair/index.html'], (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
+// Catch-all for unknown routes (only API routes that didn't match get 404 JSON, or 404 page)
 app.use(notFoundHandler);
 
 // Centralized Error Handling
