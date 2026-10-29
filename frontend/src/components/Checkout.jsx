@@ -275,7 +275,7 @@ const Checkout = () => {
             <MagneticButton className="btn-primary" onClick={handleInitiatePurchase}>
               Complete Purchase
             </MagneticButton>
-            <MagneticButton className="btn-secondary" href="#evofills">
+            <MagneticButton className="btn-secondary" href="/products#evofills">
               Browse Evo-Fills
             </MagneticButton>
           </div>
@@ -413,7 +413,7 @@ const Checkout = () => {
               Pre-filled, zero-contamination foundation capsules designed for your Evo-Air. Just click and spray.
             </p>
             <div className="ck-acc-price">₹2,500</div>
-            <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="#evofills">
+            <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="/products#evofills">
               View
             </MagneticButton>
           </div>
@@ -425,7 +425,7 @@ const Checkout = () => {
               Want to use your own foundation? Buy our empty, refillable capsules. Pack of 20.
             </p>
             <div className="ck-acc-price">₹1,799</div>
-            <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="#evobottles">
+            <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="/products#evobottles">
               View
             </MagneticButton>
           </div>

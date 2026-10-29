@@ -6,23 +6,40 @@ const PRIMARY_CART_KEY = 'evoair_cart';
 const LEGACY_CART_KEY = 'evoluir_cart';
 const CART_EVENT = 'evoair_cart_updated';
 
-export const SEED_VARIANT_UUIDS = {
-  'EVO-01': '11111111-1111-4111-8111-000000000001',
-  'EVO-02': '11111111-1111-4111-8111-000000000002',
-  'EVO-03': '11111111-1111-4111-8111-000000000003',
-  'EVO-04': '11111111-1111-4111-8111-000000000004',
-  'EVO-05': '11111111-1111-4111-8111-000000000005',
-  'EVO-06': '11111111-1111-4111-8111-000000000006',
-  'EVO-07': '11111111-1111-4111-8111-000000000007',
-  'EVO-08': '11111111-1111-4111-8111-000000000008',
-  'EVO-09': '11111111-1111-4111-8111-000000000009',
-  'EVO-10': '11111111-1111-4111-8111-000000000010',
-  'EVO-FILL-10': '11111111-1111-4111-8111-000000000051',
-  'EVO-BOTTLE-20': '11111111-1111-4111-8111-000000000052',
+// Dynamic in-memory catalog cache loaded from GET /api/v1/catalog/products
+let catalogCache = null;
+let catalogPromise = null;
+
+export const loadCatalog = async () => {
+  if (catalogCache) return catalogCache;
+  if (!catalogPromise) {
+    catalogPromise = (async () => {
+      try {
+        const res = await api.get('/api/v1/catalog/products');
+        if (res.ok) {
+          const json = await res.json();
+          catalogCache = json?.data?.products || [];
+          return catalogCache;
+        }
+        return [];
+      } catch (e) {
+        console.warn('Could not load live catalog products:', e);
+        return [];
+      } finally {
+        catalogPromise = null;
+      }
+    })();
+  }
+  return catalogPromise;
 };
 
+// Eagerly trigger catalog fetch on module load
+if (typeof window !== 'undefined') {
+  loadCatalog();
+}
+
 /**
- * Maps frontend shade/accessory data to PostgreSQL variant UUID
+ * Maps frontend shade/accessory data dynamically to PostgreSQL variant UUID
  */
 export const resolveVariantId = (item) => {
   if (item.variantId && typeof item.variantId === 'string' && item.variantId.length >= 30) {
@@ -31,47 +48,22 @@ export const resolveVariantId = (item) => {
   if (item.variant_id && typeof item.variant_id === 'string' && item.variant_id.length >= 30) {
     return item.variant_id;
   }
-  if (item.id === 'evo-bottles-empty-pack' || item.name?.includes('Evo-Bottles')) {
-    return SEED_VARIANT_UUIDS['EVO-BOTTLE-20'];
-  }
-  if (item.id === 'evofills' || item.name?.includes('Evo-Fills')) {
-    return SEED_VARIANT_UUIDS['EVO-FILL-10'];
+
+  // Look up in live catalog if loaded
+  if (catalogCache && catalogCache.length > 0) {
+    for (const prod of catalogCache) {
+      if (!prod.variants) continue;
+      for (const v of prod.variants) {
+        if (item.shadeCode && v.shade_code === item.shadeCode) return v.id;
+        if (item.shadeName && v.shade_name?.toLowerCase() === item.shadeName?.toLowerCase()) return v.id;
+        if (item.sku && v.sku === item.sku) return v.id;
+        if (item.id === 'evofills' && v.sku?.includes('FILL')) return v.id;
+        if (item.id === 'evo-bottles-empty-pack' && v.sku?.includes('BOTTLE')) return v.id;
+      }
+    }
   }
 
-  const codeMap = {
-    '02': SEED_VARIANT_UUIDS['EVO-01'],
-    '03': SEED_VARIANT_UUIDS['EVO-02'],
-    '06': SEED_VARIANT_UUIDS['EVO-03'],
-    '07': SEED_VARIANT_UUIDS['EVO-04'],
-    '10': SEED_VARIANT_UUIDS['EVO-05'],
-    '11': SEED_VARIANT_UUIDS['EVO-06'],
-    '14': SEED_VARIANT_UUIDS['EVO-07'],
-    '15': SEED_VARIANT_UUIDS['EVO-08'],
-    '18': SEED_VARIANT_UUIDS['EVO-09'],
-    '19': SEED_VARIANT_UUIDS['EVO-10'],
-  };
-  if (item.shadeCode && codeMap[item.shadeCode]) {
-    return codeMap[item.shadeCode];
-  }
-
-  const nameMap = {
-    halo: SEED_VARIANT_UUIDS['EVO-01'],
-    flare: SEED_VARIANT_UUIDS['EVO-02'],
-    serene: SEED_VARIANT_UUIDS['EVO-03'],
-    astra: SEED_VARIANT_UUIDS['EVO-04'],
-    amber: SEED_VARIANT_UUIDS['EVO-05'],
-    dawn: SEED_VARIANT_UUIDS['EVO-06'],
-    cosmic: SEED_VARIANT_UUIDS['EVO-07'],
-    stardusk: SEED_VARIANT_UUIDS['EVO-08'],
-    galaxy: SEED_VARIANT_UUIDS['EVO-09'],
-    nebula: SEED_VARIANT_UUIDS['EVO-10'],
-  };
-  const lower = (item.shadeName || '').toLowerCase().trim();
-  if (lower && nameMap[lower]) {
-    return nameMap[lower];
-  }
-
-  return SEED_VARIANT_UUIDS['EVO-01']; // Default fallback to Halo
+  return item.variantId || item.variant_id || null;
 };
 
 export const getCart = () => {
@@ -179,6 +171,7 @@ export const syncCartWithBackend = async () => {
   const variantMap = new Map();
   for (const item of localItems) {
     const vId = resolveVariantId(item);
+    if (!vId) continue; // Safely skip unknown or invalid variant IDs
     const qty = Math.min(10, Math.max(1, item.quantity || 1));
     const existing = variantMap.get(vId) || 0;
     variantMap.set(vId, Math.min(10, existing + qty));

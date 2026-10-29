@@ -4,23 +4,9 @@ import { useCart } from '../utils/cart';
 export const CartNavButton = ({ className = '', style = {} }) => {
   const { totalCount } = useCart();
 
-  const handleClick = (e) => {
-    // If already on cart, do nothing
-    if (window.location.pathname === '/cart' || window.location.pathname.endsWith('/cart.html') || window.location.hash === '#cart') {
-      e.preventDefault();
-      return;
-    }
-    // If on landing page (App.jsx), set hash for immediate 0ms transition
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html' || !window.location.pathname.includes('/products')) {
-      e.preventDefault();
-      window.location.hash = '#cart';
-    }
-  };
-
   return (
     <a
       href="/cart"
-      onClick={handleClick}
       className={`cart-nav-link ${className}`}
       aria-label={`Shopping cart with ${totalCount} items`}
       style={{
