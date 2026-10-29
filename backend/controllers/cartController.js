@@ -3,6 +3,7 @@ import {
   cartItemUpdateSchema,
   cartVariantParamSchema,
   cartSyncSchema,
+  cartCalculateSchema,
 } from '../validators/cartValidators.js';
 import { ValidationError } from '../utils/errors.js';
 
@@ -69,5 +70,14 @@ export const syncCart = asyncHandler(async (req, res) => {
       cart: result.cart,
       skipped: result.skipped,
     },
+  });
+});
+
+export const calculateCart = asyncHandler(async (req, res) => {
+  const validated = validate(cartCalculateSchema, req.body || {});
+  const result = await cartService.calculateGuestCart(validated.items);
+  res.status(200).json({
+    status: 'success',
+    data: result,
   });
 });

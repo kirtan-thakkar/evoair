@@ -6,6 +6,8 @@ const PRIMARY_CART_KEY = 'evoair_cart';
 const LEGACY_CART_KEY = 'evoluir_cart';
 const CART_EVENT = 'evoair_cart_updated';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Dynamic in-memory catalog cache loaded from GET /api/v1/catalog/products
 let catalogCache = null;
 let catalogPromise = null;
@@ -42,6 +44,7 @@ if (typeof window !== 'undefined') {
  * Maps frontend shade/accessory data dynamically to PostgreSQL variant UUID
  */
 export const resolveVariantId = (item) => {
+  if (!item) return null;
   if (item.variantId && typeof item.variantId === 'string' && item.variantId.length >= 30) {
     return item.variantId;
   }
@@ -55,22 +58,24 @@ export const resolveVariantId = (item) => {
       if (!prod.variants) continue;
       for (const v of prod.variants) {
         if (item.shadeCode && v.shade_code === item.shadeCode) return v.id;
+        if (item.shade_code && v.shade_code === item.shade_code) return v.id;
         if (item.shadeName && v.shade_name?.toLowerCase() === item.shadeName?.toLowerCase()) return v.id;
+        if (item.shade_name && v.shade_name?.toLowerCase() === item.shade_name?.toLowerCase()) return v.id;
         if (item.sku && v.sku === item.sku) return v.id;
         if (item.id === 'evofills' && v.sku?.includes('FILL')) return v.id;
         if (item.id === 'evo-bottles-empty-pack' && v.sku?.includes('BOTTLE')) return v.id;
+        if (item.id === 'evoair' && v.shade_code === (item.shadeCode || item.shade_code || '02')) return v.id;
       }
     }
   }
 
-  return item.variantId || item.variant_id || null;
+  return item.variantId || item.variant_id || (UUID_REGEX.test(item.id) ? item.id : null);
 };
 
 export const getCart = () => {
   try {
     let raw = localStorage.getItem(PRIMARY_CART_KEY);
     if (!raw) {
-      // Migrate from legacy key if present
       raw = localStorage.getItem(LEGACY_CART_KEY);
       if (raw) {
         localStorage.setItem(PRIMARY_CART_KEY, raw);
@@ -101,7 +106,7 @@ export const addToCart = (newItem) => {
   const existingIndex = current.findIndex(
     (item) =>
       resolveVariantId(item) === vId &&
-      (item.shadeCode || 'default') === (newItem.shadeCode || 'default')
+      (item.shadeCode || item.shade_code || 'default') === (newItem.shadeCode || newItem.shade_code || 'default')
   );
 
   let updated;
@@ -126,7 +131,7 @@ export const updateQuantity = (uniqueKey, delta) => {
     .map((item) => {
       const key = `${item.id || item.variantId}-${item.shadeCode || 'default'}`;
       if (key === uniqueKey) {
-        const newQty = item.quantity + delta;
+        const newQty = (item.quantity || 1) + delta;
         return newQty > 0 ? { ...item, quantity: Math.min(10, newQty) } : null;
       }
       return item;
@@ -141,7 +146,7 @@ export const removeFromCart = (uniqueKey) => {
   const current = getCart();
   const updated = current.filter((item) => {
     const key = `${item.id || item.variantId}-${item.shadeCode || 'default'}`;
-    return key !== uniqueKey;
+    return key !== uniqueKey && item.variantId !== uniqueKey && item.id !== uniqueKey;
   });
   saveCart(updated);
   return updated;
@@ -157,12 +162,10 @@ export const clearCart = (isAuthenticated = false) => {
 
 /**
  * Synchronizes local guest items with PostgreSQL server cart upon authentication.
- * On success, clears localStorage cart as server cart becomes source of truth.
  */
 export const syncCartWithBackend = async () => {
   const localItems = getCart();
   if (!localItems.length) {
-    // No local items, just fetch existing server cart
     const res = await api.get('/api/v1/cart');
     if (res.ok) {
       const data = await res.json();
@@ -171,11 +174,10 @@ export const syncCartWithBackend = async () => {
     return null;
   }
 
-  // Deduplicate and format items for POST /api/v1/cart/sync
   const variantMap = new Map();
   for (const item of localItems) {
     const vId = resolveVariantId(item);
-    if (!vId) continue; // Safely skip unknown or invalid variant IDs
+    if (!vId) continue;
     const qty = Math.min(10, Math.max(1, item.quantity || 1));
     const existing = variantMap.get(vId) || 0;
     variantMap.set(vId, Math.min(10, existing + qty));
@@ -191,7 +193,6 @@ export const syncCartWithBackend = async () => {
   const res = await api.post('/api/v1/cart/sync', payload);
   if (res.ok) {
     const data = await res.json();
-    // Clear guest cart in localStorage now that server holds it
     localStorage.removeItem(PRIMARY_CART_KEY);
     localStorage.removeItem(LEGACY_CART_KEY);
     window.dispatchEvent(new Event(CART_EVENT));
@@ -205,7 +206,81 @@ export const useCart = (isAuthenticated = false) => {
   const [items, setItems] = useState(getCart);
   const [serverCart, setServerCart] = useState(null);
   const [isServerCart, setIsServerCart] = useState(false);
-  const [loadingCart, setLoadingCart] = useState(false);
+  const [loadingCart, setLoadingCart] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
+  const [mutatingItemId, setMutatingItemId] = useState(null);
+  const [guestPricing, setGuestPricing] = useState(null);
+
+  // Helper to fetch server-side pricing for guest cart
+  const fetchGuestPricing = useCallback(async (guestItems) => {
+    if (!guestItems || guestItems.length === 0) {
+      setGuestPricing({
+        subtotal_paise: 0,
+        subtotal_rupees: 0,
+        shipping_fee_paise: 0,
+        shipping_fee_rupees: 0,
+        customs_and_taxes: 'Included',
+        tax_paise: 0,
+        total_paise: 0,
+        total_rupees: 0,
+        currency: 'INR',
+        currency_symbol: '₹',
+        formatted: {
+          subtotal: '₹0',
+          shipping: '₹0',
+          customs_and_taxes: 'Included',
+          total: '₹0',
+        },
+      });
+      return;
+    }
+
+    try {
+      const payload = {
+        items: guestItems.map((item) => ({
+          variantId: resolveVariantId(item),
+          id: item.id,
+          sku: item.sku,
+          shadeCode: item.shadeCode || item.shade_code,
+          quantity: item.quantity || 1,
+        })),
+      };
+
+      const res = await api.post('/api/v1/cart/calculate', payload);
+      if (res.ok) {
+        const json = await res.json();
+        const data = json?.data;
+        if (data?.pricing) {
+          setGuestPricing(data.pricing);
+          // Enrich local items with server prices if returned
+          if (Array.isArray(data.items) && data.items.length > 0) {
+            setItems((prev) =>
+              prev.map((it) => {
+                const match = data.items.find(
+                  (ci) =>
+                    ci.variant_id === it.variantId ||
+                    ci.id === it.id ||
+                    (ci.shade_code && ci.shade_code === (it.shadeCode || it.shade_code))
+                );
+                if (match) {
+                  return {
+                    ...it,
+                    price_paise: match.price_paise,
+                    line_total_paise: match.line_total_paise,
+                    formatted_price: match.formatted_price,
+                    formatted_line_total: match.formatted_line_total,
+                  };
+                }
+                return it;
+              })
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to calculate server pricing for guest cart:', e);
+    }
+  }, []);
 
   // Fetch or sync server cart if authenticated
   const loadServerCart = useCallback(async () => {
@@ -241,15 +316,21 @@ export const useCart = (isAuthenticated = false) => {
     } else {
       setIsServerCart(false);
       setServerCart(null);
-      setItems(getCart());
+      const local = getCart();
+      setItems(local);
+      setLoadingCart(true);
+      fetchGuestPricing(local).finally(() => setLoadingCart(false));
     }
-  }, [isAuthenticated, loadServerCart]);
+  }, [isAuthenticated, loadServerCart, fetchGuestPricing]);
 
   useEffect(() => {
     const handleUpdate = () => {
-      setItems(getCart());
+      const local = getCart();
+      setItems(local);
       if (isAuthenticated) {
         loadServerCart();
+      } else {
+        fetchGuestPricing(local);
       }
     };
 
@@ -260,23 +341,241 @@ export const useCart = (isAuthenticated = false) => {
       window.removeEventListener(CART_EVENT, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [isServerCart]);
+  }, [isAuthenticated, loadServerCart, fetchGuestPricing]);
 
-  // If serverCart is active, use server items; otherwise use local items
+  // Active items: server items when authenticated, otherwise local items
   const activeItems = isServerCart && serverCart?.items ? serverCart.items : items;
+
+  // Active pricing object calculated exclusively by backend PostgreSQL
+  const activePricing = isServerCart && serverCart?.pricing
+    ? serverCart.pricing
+    : guestPricing || {
+        subtotal_paise: 0,
+        subtotal_rupees: 0,
+        shipping_fee_paise: 0,
+        shipping_fee_rupees: 0,
+        customs_and_taxes: 'Included',
+        tax_paise: 0,
+        total_paise: 0,
+        total_rupees: 0,
+        currency: 'INR',
+        currency_symbol: '₹',
+        formatted: {
+          subtotal: '₹0',
+          shipping: '₹0',
+          customs_and_taxes: 'Included',
+          total: '₹0',
+        },
+      };
 
   const totalCount = isServerCart
     ? serverCart?.total_count || 0
     : activeItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-  const subtotalPaise = isServerCart
-    ? serverCart?.total_paise || 0
-    : activeItems.reduce((sum, item) => sum + (item.numericPrice || 0) * 100 * (item.quantity || 1), 0);
+  // Helper to extract variant or item identifier
+  const resolveTargetId = (itemOrKey) => {
+    if (!itemOrKey) return null;
+    if (typeof itemOrKey === 'object') {
+      return itemOrKey.variant_id || itemOrKey.variantId || resolveVariantId(itemOrKey) || itemOrKey.id;
+    }
+    if (typeof itemOrKey === 'string') {
+      if (UUID_REGEX.test(itemOrKey)) return itemOrKey;
+      if (itemOrKey.includes('-')) {
+        const parts = itemOrKey.split('-');
+        if (parts.length >= 5) {
+          const cand = parts.slice(0, 5).join('-');
+          if (UUID_REGEX.test(cand)) return cand;
+        }
+      }
+      const match = activeItems.find(
+        (it) =>
+          it.id === itemOrKey ||
+          it.variant_id === itemOrKey ||
+          `${it.id || it.variant_id || it.variantId}-${it.shadeCode || it.shade_code || 'default'}` === itemOrKey
+      );
+      if (match) {
+        return match.variant_id || match.variantId || resolveVariantId(match) || match.id;
+      }
+      return itemOrKey;
+    }
+    return null;
+  };
+
+  // Connected Reactive Remove Item
+  const handleRemoveFromCart = useCallback(
+    async (itemOrKey) => {
+      const targetId = resolveTargetId(itemOrKey);
+      const loadingKey = targetId || (typeof itemOrKey === 'string' ? itemOrKey : itemOrKey?.id);
+      setMutatingItemId(loadingKey);
+      setIsMutating(true);
+
+      try {
+        if (isAuthenticated && targetId) {
+          const res = await api.delete(`/api/v1/cart/${targetId}`);
+          if (res.ok) {
+            const json = await res.json();
+            const updated = json?.data?.cart;
+            if (updated) {
+              setServerCart(updated);
+            }
+          }
+          // Also clean localStorage in case any legacy key remained
+          const local = getCart();
+          const filtered = local.filter((item) => {
+            const key = `${item.id || item.variantId}-${item.shadeCode || 'default'}`;
+            return item.variantId !== targetId && item.id !== targetId && key !== itemOrKey;
+          });
+          saveCart(filtered);
+        } else {
+          // Guest removal
+          const local = getCart();
+          const filtered = local.filter((item) => {
+            const key = `${item.id || item.variantId}-${item.shadeCode || 'default'}`;
+            return (
+              item.variantId !== targetId &&
+              item.id !== targetId &&
+              item.id !== itemOrKey &&
+              key !== itemOrKey
+            );
+          });
+          saveCart(filtered);
+          setItems(filtered);
+          await fetchGuestPricing(filtered);
+        }
+      } catch (err) {
+        console.error('Failed to remove cart item:', err);
+      } finally {
+        setMutatingItemId(null);
+        setIsMutating(false);
+        window.dispatchEvent(new Event(CART_EVENT));
+      }
+    },
+    [isAuthenticated, activeItems, fetchGuestPricing]
+  );
+
+  // Connected Reactive Update Quantity
+  const handleUpdateQuantity = useCallback(
+    async (itemOrKey, delta) => {
+      const targetId = resolveTargetId(itemOrKey);
+      const targetItem = activeItems.find(
+        (it) =>
+          it.variant_id === targetId ||
+          it.id === targetId ||
+          it === itemOrKey ||
+          `${it.id || it.variant_id || it.variantId}-${it.shadeCode || it.shade_code || 'default'}` === itemOrKey
+      );
+
+      const currentQty = targetItem?.quantity || 1;
+      const newQty = Math.max(0, Math.min(10, currentQty + delta));
+      const loadingKey = targetId || (typeof itemOrKey === 'string' ? itemOrKey : itemOrKey?.id);
+
+      setMutatingItemId(loadingKey);
+      setIsMutating(true);
+
+      try {
+        if (isAuthenticated && targetId) {
+          if (newQty <= 0) {
+            const res = await api.delete(`/api/v1/cart/${targetId}`);
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.data?.cart) setServerCart(json.data.cart);
+            }
+          } else {
+            const res = await api.put('/api/v1/cart', {
+              variantId: targetId,
+              quantity: newQty,
+            });
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.data?.cart) setServerCart(json.data.cart);
+            }
+          }
+        } else {
+          // Guest quantity change
+          const local = getCart();
+          const updated = local
+            .map((item) => {
+              const key = `${item.id || item.variantId}-${item.shadeCode || 'default'}`;
+              if (item.variantId === targetId || item.id === targetId || key === itemOrKey) {
+                return newQty > 0 ? { ...item, quantity: newQty } : null;
+              }
+              return item;
+            })
+            .filter(Boolean);
+          saveCart(updated);
+          setItems(updated);
+          await fetchGuestPricing(updated);
+        }
+      } catch (err) {
+        console.error('Failed to update cart quantity:', err);
+      } finally {
+        setMutatingItemId(null);
+        setIsMutating(false);
+        window.dispatchEvent(new Event(CART_EVENT));
+      }
+    },
+    [isAuthenticated, activeItems, fetchGuestPricing]
+  );
+
+  // Connected Reactive Add to Cart
+  const handleAddToCart = useCallback(
+    async (newItem) => {
+      setIsMutating(true);
+      try {
+        if (isAuthenticated) {
+          const vId = resolveVariantId(newItem);
+          if (vId) {
+            const existing = activeItems.find((it) => it.variant_id === vId || it.id === vId);
+            const qty = Math.min(10, (existing?.quantity || 0) + (newItem.quantity || 1));
+            const res = await api.put('/api/v1/cart', {
+              variantId: vId,
+              quantity: qty,
+            });
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.data?.cart) setServerCart(json.data.cart);
+            }
+          }
+        } else {
+          const updated = addToCart(newItem);
+          setItems(updated);
+          await fetchGuestPricing(updated);
+        }
+      } catch (err) {
+        console.error('Failed to add to cart:', err);
+      } finally {
+        setIsMutating(false);
+        window.dispatchEvent(new Event(CART_EVENT));
+      }
+    },
+    [isAuthenticated, activeItems, fetchGuestPricing]
+  );
 
   const handleClearCart = useCallback(async () => {
+    setIsMutating(true);
     saveCart([]);
     setItems([]);
-    setServerCart({ items: [], total_count: 0, total_paise: 0 });
+    setServerCart({
+      items: [],
+      total_count: 0,
+      total_paise: 0,
+      pricing: {
+        subtotal_paise: 0,
+        subtotal_rupees: 0,
+        shipping_fee_paise: 0,
+        shipping_fee_rupees: 0,
+        customs_and_taxes: 'Included',
+        tax_paise: 0,
+        total_paise: 0,
+        total_rupees: 0,
+        formatted: {
+          subtotal: '₹0',
+          shipping: '₹0',
+          customs_and_taxes: 'Included',
+          total: '₹0',
+        },
+      },
+    });
     if (isAuthenticated) {
       try {
         await api.delete('/api/v1/cart');
@@ -284,6 +583,7 @@ export const useCart = (isAuthenticated = false) => {
         console.error('Failed to clear server cart:', e);
       }
     }
+    setIsMutating(false);
     window.dispatchEvent(new Event(CART_EVENT));
   }, [isAuthenticated]);
 
@@ -292,12 +592,18 @@ export const useCart = (isAuthenticated = false) => {
     serverCart,
     isServerCart,
     loadingCart,
+    isMutating,
+    mutatingItemId,
     totalCount,
-    subtotal: subtotalPaise / 100,
-    subtotalPaise,
-    addToCart,
-    updateQuantity,
-    removeFromCart,
+    pricing: activePricing,
+    subtotal: activePricing.subtotal_rupees,
+    subtotalPaise: activePricing.subtotal_paise,
+    shippingFee: activePricing.shipping_fee_rupees,
+    finalTotal: activePricing.total_rupees,
+    formattedPricing: activePricing.formatted,
+    addToCart: handleAddToCart,
+    updateQuantity: handleUpdateQuantity,
+    removeFromCart: handleRemoveFromCart,
     clearCart: handleClearCart,
     reloadCart: loadServerCart,
   };

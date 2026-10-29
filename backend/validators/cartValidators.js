@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { uuidSchema } from './commonValidators.js';
 
 export const cartItemUpdateSchema = z.object({
-  variantId: uuidSchema,
+  variantId: z.string().trim().min(1, 'variantId is required'),
   quantity: z
     .number()
     .int()
@@ -11,7 +11,7 @@ export const cartItemUpdateSchema = z.object({
 });
 
 export const cartVariantParamSchema = z.object({
-  variantId: uuidSchema,
+  variantId: z.string().trim().min(1, 'variantId or identifier is required'),
 });
 
 export const cartSyncItemSchema = z.object({
@@ -36,4 +36,18 @@ export const cartSyncSchema = z.object({
         message: 'Duplicate variantIds are not allowed in sync payload',
       }
     ),
+});
+
+export const cartCalculateSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        variantId: z.string().optional(),
+        id: z.string().optional(),
+        sku: z.string().optional(),
+        shadeCode: z.string().optional(),
+        quantity: z.number().int().min(1).max(10).default(1),
+      })
+    )
+    .default([]),
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from './Layout';
 import MagneticButton from './MagneticButton';
 import BlackHole from './BlackHole';
@@ -7,7 +7,6 @@ import heroCapsules from '../assets/hero-capsules.png';
 import { useCart } from '../utils/cart';
 import { AuthNavButton, AuthModal } from './AuthModal';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../utils/api';
 
 const formatCurrency = (val) => {
   return new Intl.NumberFormat('en-IN', {
@@ -18,14 +17,19 @@ const formatCurrency = (val) => {
 };
 
 const Cart = () => {
-  const { user, isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady } = useAuth();
   const {
     items,
-    serverCart,
     isServerCart,
     loadingCart,
+    isMutating,
+    mutatingItemId,
     totalCount,
+    pricing,
     subtotal,
+    shippingFee,
+    finalTotal,
+    formattedPricing,
     addToCart,
     updateQuantity,
     removeFromCart,
@@ -39,12 +43,9 @@ const Cart = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const deliveryFee = subtotal > 0 ? 150 : 0;
-  const finalTotal = subtotal + deliveryFee;
-
   const handleInitiateCheckout = (e) => {
     e.preventDefault();
-    if (!authReady) return;
+    if (!authReady || loadingCart || isMutating) return;
 
     if (!isAuthenticated) {
       setAuthModalOpen(true);
@@ -81,7 +82,9 @@ const Cart = () => {
             <div className="cart-label">STARCAST COLLECTION</div>
             <h1 className="cart-title">Your Cart</h1>
             <p className="cart-item-count-sub">
-              {totalCount === 0
+              {loadingCart
+                ? 'Connecting to database...'
+                : totalCount === 0
                 ? 'Your bag is currently empty'
                 : `${totalCount} item${totalCount === 1 ? '' : 's'} ready for checkout`}
             </p>
@@ -114,6 +117,46 @@ const Cart = () => {
                 Explore Products
               </MagneticButton>
             </div>
+          ) : loadingCart ? (
+            /* ── Luxury Shimmer Skeleton UI while loading from server ── */
+            <div className="cart-content-grid">
+              <div className="cart-items-column">
+                <div className="cart-items-list">
+                  <div className="cart-skeleton-card">
+                    <div className="cart-skeleton-thumb" />
+                    <div className="cart-skeleton-info">
+                      <div className="cart-skeleton-line title" />
+                      <div className="cart-skeleton-line badge" />
+                      <div className="cart-skeleton-bottom">
+                        <div className="cart-skeleton-qty" />
+                        <div className="cart-skeleton-price" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cart-skeleton-card">
+                    <div className="cart-skeleton-thumb" />
+                    <div className="cart-skeleton-info">
+                      <div className="cart-skeleton-line title" />
+                      <div className="cart-skeleton-line badge" />
+                      <div className="cart-skeleton-bottom">
+                        <div className="cart-skeleton-qty" />
+                        <div className="cart-skeleton-price" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cart-summary-column">
+                <div className="cart-summary-card cart-skeleton-summary">
+                  <div className="cart-skeleton-line title" style={{ width: '50%', marginBottom: '24px' }} />
+                  <div className="cart-skeleton-line" style={{ width: '100%', height: '14px', marginBottom: '14px' }} />
+                  <div className="cart-skeleton-line" style={{ width: '100%', height: '14px', marginBottom: '14px' }} />
+                  <div className="cart-skeleton-line" style={{ width: '100%', height: '14px', marginBottom: '24px' }} />
+                  <div className="cart-skeleton-line" style={{ width: '100%', height: '48px', borderRadius: '30px' }} />
+                </div>
+              </div>
+            </div>
           ) : items.length === 0 ? (
             <div className="cart-empty-state">
               <div className="cart-empty-icon">
@@ -138,15 +181,20 @@ const Cart = () => {
                 <div className="cart-items-list">
                   {items.map((item) => {
                     const uniqueKey = `${item.id || item.variant_id || item.variantId}-${item.shadeCode || item.shade_code || 'default'}`;
-                    const itemPrice = isServerCart && item.price_paise
-                      ? item.price_paise / 100
-                      : item.numericPrice || 2800;
+                    const targetId = item.variant_id || item.variantId || item.id;
+                    const isItemLoading = mutatingItemId === targetId || mutatingItemId === item.id || mutatingItemId === uniqueKey;
+
                     const itemLineTotal = isServerCart && item.line_total_paise
                       ? item.line_total_paise / 100
-                      : itemPrice * (item.quantity || 1);
+                      : item.line_total_rupees || (item.numericPrice || 2800) * (item.quantity || 1);
+
+                    const swatchHex = item.color_hex || item.shadeSwatch;
 
                     return (
-                      <div key={uniqueKey} className="cart-item-card">
+                      <div
+                        key={uniqueKey}
+                        className={`cart-item-card ${isItemLoading ? 'is-mutating' : ''}`}
+                      >
                         <div className="cart-item-thumb">
                           <img
                             src={item.image || heroCapsules}
@@ -160,20 +208,22 @@ const Cart = () => {
                             <h3 className="cart-item-name">{item.product_name || item.name}</h3>
                             <button
                               type="button"
-                              className="cart-remove-btn"
-                              onClick={() => removeFromCart(uniqueKey)}
+                              className={`cart-remove-btn ${isItemLoading ? 'is-loading' : ''}`}
+                              onClick={() => !isItemLoading && removeFromCart(item)}
+                              disabled={isItemLoading}
                               aria-label="Remove item"
+                              title="Remove item"
                             >
-                              ✕
+                              {isItemLoading ? <span className="cart-btn-spinner" /> : '✕'}
                             </button>
                           </div>
 
                           {(item.shade_name || item.shadeName || item.subtitle) && (
                             <div className="cart-item-spec">
-                              {item.shadeSwatch && (
+                              {swatchHex && (
                                 <span
                                   className="cart-spec-swatch"
-                                  style={{ backgroundColor: item.shadeSwatch }}
+                                  style={{ backgroundColor: swatchHex }}
                                 />
                               )}
                               <span>
@@ -185,28 +235,32 @@ const Cart = () => {
                           )}
 
                           <div className="cart-item-bottom-row">
-                            <div className="cart-qty-control">
+                            <div className={`cart-qty-control ${isItemLoading ? 'is-disabled' : ''}`}>
                               <button
                                 type="button"
                                 className="cart-qty-btn"
-                                onClick={() => updateQuantity(uniqueKey, -1)}
+                                onClick={() => !isItemLoading && updateQuantity(item, -1)}
+                                disabled={isItemLoading || (item.quantity || 1) <= 1}
                                 aria-label="Decrease quantity"
                               >
                                 −
                               </button>
-                              <span className="cart-qty-num">{item.quantity || 1}</span>
+                              <span className="cart-qty-num">
+                                {isItemLoading ? '…' : (item.quantity || 1)}
+                              </span>
                               <button
                                 type="button"
                                 className="cart-qty-btn"
-                                onClick={() => updateQuantity(uniqueKey, 1)}
+                                onClick={() => !isItemLoading && updateQuantity(item, 1)}
+                                disabled={isItemLoading || (item.quantity || 1) >= 10}
                                 aria-label="Increase quantity"
                               >
                                 +
                               </button>
                             </div>
 
-                            <div className="cart-item-price">
-                              {formatCurrency(itemLineTotal)}
+                            <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
+                              {item.formatted_line_total || formatCurrency(itemLineTotal)}
                             </div>
                           </div>
                         </div>
@@ -233,6 +287,7 @@ const Cart = () => {
                         <span className="cart-kit-price">₹2,500</span>
                         <MagneticButton
                           className="btn-secondary cart-kit-add-btn"
+                          disabled={isMutating}
                           onClick={() => {
                             addToCart({
                               id: 'evofills',
@@ -261,6 +316,7 @@ const Cart = () => {
                         <span className="cart-kit-price">₹1,799</span>
                         <MagneticButton
                           className="btn-secondary cart-kit-add-btn"
+                          disabled={isMutating}
                           onClick={() => {
                             addToCart({
                               id: 'evo-bottles-empty-pack',
@@ -280,7 +336,7 @@ const Cart = () => {
                 </div>
               </div>
 
-              {/* Right Column: Order Summary */}
+              {/* Right Column: Order Summary (Server-Driven Pricing) */}
               <div className="cart-summary-column">
                 <div className="cart-summary-card">
                   <h2 className="cart-summary-title">Order Summary</h2>
@@ -288,24 +344,32 @@ const Cart = () => {
                   <div className="cart-summary-rows">
                     <div className="cart-summary-row">
                       <span>Subtotal</span>
-                      <span>{formatCurrency(subtotal)}</span>
+                      <span className={isMutating ? 'cart-price-updating' : ''}>
+                        {formattedPricing?.subtotal || formatCurrency(subtotal)}
+                      </span>
                     </div>
 
                     <div className="cart-summary-row">
                       <span>Standard Delivery</span>
-                      <span>{deliveryFee > 0 ? formatCurrency(deliveryFee) : '₹0'}</span>
+                      <span className={isMutating ? 'cart-price-updating' : ''} style={{ color: '#fff' }}>
+                        {formattedPricing?.shipping || (shippingFee > 0 ? formatCurrency(shippingFee) : '₹0')}
+                      </span>
                     </div>
 
                     <div className="cart-summary-row">
                       <span>Customs & Taxes</span>
-                      <span>Included</span>
+                      <span style={{ color: '#888' }}>
+                        {formattedPricing?.customs_and_taxes || 'Included'}
+                      </span>
                     </div>
 
                     <div className="cart-summary-divider" />
 
                     <div className="cart-summary-row cart-total-row">
                       <span>Total</span>
-                      <span>{formatCurrency(finalTotal)}</span>
+                      <span className={isMutating ? 'cart-price-updating' : ''}>
+                        {formattedPricing?.total || formatCurrency(finalTotal)}
+                      </span>
                     </div>
                   </div>
 
@@ -313,9 +377,16 @@ const Cart = () => {
                   <MagneticButton
                     className="btn-primary cart-checkout-btn"
                     onClick={handleInitiateCheckout}
-                    style={{ width: '100%', marginTop: '24px', padding: '16px' }}
+                    disabled={isMutating || loadingCart}
+                    style={{
+                      width: '100%',
+                      marginTop: '24px',
+                      padding: '16px',
+                      opacity: isMutating ? 0.7 : 1,
+                      pointerEvents: isMutating ? 'none' : 'auto',
+                    }}
                   >
-                    Proceed to Checkout
+                    {isMutating ? 'Updating Cart…' : 'Proceed to Checkout'}
                   </MagneticButton>
 
                   <div className="cart-guarantee-list">

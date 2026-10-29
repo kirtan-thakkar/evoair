@@ -23,7 +23,11 @@ const CheckoutPage = () => {
     serverCart,
     isServerCart,
     loadingCart,
+    pricing,
     subtotal,
+    shippingFee,
+    finalTotal,
+    formattedPricing,
     clearCart,
     reloadCart,
   } = useCart(isAuthenticated);
@@ -91,12 +95,11 @@ const CheckoutPage = () => {
     }
   }, [authReady, isAuthenticated]);
 
-  // Compute order items list
+  // Compute order items list with server pricing calculations
   const displayItems = serverCart?.items?.length ? serverCart.items : items;
-  const itemsSubtotalPaise = serverCart?.total_paise ?? (subtotal * 100);
-  const itemsSubtotalRupees = Math.round(itemsSubtotalPaise / 100);
-  const shippingFeeRupees = itemsSubtotalRupees > 0 ? 150 : 0;
-  const totalAmountRupees = itemsSubtotalRupees + shippingFeeRupees;
+  const itemsSubtotalRupees = pricing?.subtotal_rupees ?? Math.round(subtotal);
+  const shippingFeeRupees = pricing?.shipping_fee_rupees ?? (itemsSubtotalRupees > 0 ? 150 : 0);
+  const totalAmountRupees = pricing?.total_rupees ?? (itemsSubtotalRupees + shippingFeeRupees);
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -438,8 +441,9 @@ const CheckoutPage = () => {
                     <h2 className="checkout-summary-title">Order Summary</h2>
 
                     {loadingCart ? (
-                      <div style={{ color: '#a0a0a5', fontSize: '13px', padding: '24px 0', textAlign: 'center' }}>
-                        Loading order details...
+                      <div style={{ padding: '16px 0' }}>
+                        <div className="cart-skeleton-line" style={{ width: '100%', height: '36px', marginBottom: '12px' }} />
+                        <div className="cart-skeleton-line" style={{ width: '80%', height: '36px' }} />
                       </div>
                     ) : !displayItems.length ? (
                       <div style={{ color: '#a0a0a5', fontSize: '13px', padding: '20px 0', textAlign: 'center' }}>

@@ -257,3 +257,18 @@ Evoair/
 5. **Backend Server Dev Resilience**:
    - In [backend/server.js](file:///c:/ideakicks/Evoair/backend/server.js), `unhandledRejection` and `uncaughtException` in development log errors without terminating the Node process (`gracefulShutdown` only triggers when `NODE_ENV === 'production'`).
    - Added `"dev": "node --watch server.js"` in [backend/package.json](file:///c:/ideakicks/Evoair/backend/package.json) for automatic hot reload.
+
+
+---
+
+## 9. Milestone 17 — Server-Side Pricing Engine, Cart Removal & Skeletons
+1. **Server-Side Pricing Engine**:
+   - Backend [cartService.js](file:///c:/ideakicks/Evoair/backend/services/cartService.js) is now the single source of truth for pricing calculations.
+   - Calculates items subtotal, standard shipping fee (₹150 flat via `SHIPPING_FEE_PAISE`), taxes ("Included"), and grand total, returning both raw paise and pre-formatted INR strings (`pricing` object).
+   - Added public calculation endpoint `POST /api/v1/cart/calculate` in [cartRoutes.js](file:///c:/ideakicks/Evoair/backend/routes/cartRoutes.js) for guest carts, eliminating all client-side price math.
+2. **Reactive Cart Removal & Item Management**:
+   - Fixed `removeFromCart` and `updateQuantity` in [cart.js](file:///c:/ideakicks/Evoair/frontend/src/utils/cart.js). Authenticated users now make live calls to `DELETE /api/v1/cart/:variantId` and `PUT /api/v1/cart`, deleting records from PostgreSQL and returning updated carts with recalculated server pricing.
+   - Cross button (`✕`) in [Cart.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/Cart.jsx) passes the full item object and supports UUIDs, compound keys, and slugs.
+3. **Luxury Shimmer Skeletons & Action Loaders**:
+   - Added luxury animated shimmer skeletons for cart loading in [Cart.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/Cart.jsx), checkout order summary in [CheckoutPage.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/CheckoutPage.jsx), and orders retrieval in [OrdersPage.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/OrdersPage.jsx).
+   - Added `cart-btn-spinner` inside the `✕` cross button while deletion is in flight, with card opacity transitions (`is-mutating`) and updating price animations (`cart-price-updating`).

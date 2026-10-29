@@ -4402,3 +4402,133 @@ footer {
   }
 }
 
+
+
+/* ==========================================================================
+   Luxury Shimmer Skeleton & Cart Item Loaders
+   ========================================================================== */
+@keyframes luxuryShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes luxuryPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes cartSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cart-skeleton-card {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+}
+
+.cart-skeleton-thumb {
+  width: 140px;
+  height: 140px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 37%, rgba(255, 255, 255, 0.04) 63%);
+  background-size: 400% 100%;
+  animation: luxuryShimmer 1.6s ease infinite;
+}
+
+.cart-skeleton-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cart-skeleton-line {
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 37%, rgba(255, 255, 255, 0.04) 63%);
+  background-size: 400% 100%;
+  animation: luxuryShimmer 1.6s ease infinite;
+}
+
+.cart-skeleton-line.title {
+  width: 60%;
+  height: 20px;
+}
+
+.cart-skeleton-line.badge {
+  width: 35%;
+  height: 14px;
+  margin-top: 10px;
+}
+
+.cart-skeleton-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cart-skeleton-qty {
+  width: 80px;
+  height: 28px;
+  border-radius: 20px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.04) 63%);
+  background-size: 400% 100%;
+  animation: luxuryShimmer 1.6s ease infinite;
+}
+
+.cart-skeleton-price {
+  width: 90px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.04) 63%);
+  background-size: 400% 100%;
+  animation: luxuryShimmer 1.6s ease infinite;
+}
+
+.cart-skeleton-summary {
+  padding: 32px 28px;
+}
+
+.cart-btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #42fcff;
+  border-radius: 50%;
+  animation: cartSpin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+.cart-item-card.is-mutating {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.cart-remove-btn.is-loading {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.cart-qty-control.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.cart-price-updating {
+  animation: luxuryPulse 1s ease-in-out infinite;
+}

@@ -141,8 +141,22 @@ const OrdersPage = () => {
 
           {loading ? (
             /* ── Loading Skeleton ── */
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#a0a0a5', fontSize: '14px' }}>
-              Retrieving your orders from database...
+            <div className="orders-skeleton-wrap">
+              <div className="order-skeleton-card">
+                <div className="order-skeleton-header">
+                  <div className="order-skeleton-pill" style={{ width: '180px' }} />
+                  <div className="order-skeleton-pill" style={{ width: '120px' }} />
+                </div>
+                <div className="order-skeleton-item" />
+                <div className="order-skeleton-item" />
+              </div>
+              <div className="order-skeleton-card">
+                <div className="order-skeleton-header">
+                  <div className="order-skeleton-pill" style={{ width: '160px' }} />
+                  <div className="order-skeleton-pill" style={{ width: '110px' }} />
+                </div>
+                <div className="order-skeleton-item" />
+              </div>
             </div>
           ) : error ? (
             /* ── Error Banner ── */
