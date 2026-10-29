@@ -1,5 +1,5 @@
 // frontend/src/utils/cart.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api';
 
 const PRIMARY_CART_KEY = 'evoair_cart';
@@ -202,14 +202,18 @@ export const syncCartWithBackend = async () => {
   return null;
 };
 
-export const useCart = (isAuthenticated = false) => {
-  const [items, setItems] = useState(getCart);
+export const useCart = (isAuthenticated = false, authReady = true) => {
+  const [items, setItems] = useState([]);
   const [serverCart, setServerCart] = useState(null);
   const [isServerCart, setIsServerCart] = useState(false);
   const [loadingCart, setLoadingCart] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [mutatingItemId, setMutatingItemId] = useState(null);
   const [guestPricing, setGuestPricing] = useState(null);
+  const [isBackendOffline, setIsBackendOffline] = useState(false);
+  const [backendError, setBackendError] = useState(null);
+
+  const retryTimeoutRef = useRef(null);
 
   // Helper to fetch server-side pricing for guest cart
   const fetchGuestPricing = useCallback(async (guestItems) => {
@@ -232,6 +236,8 @@ export const useCart = (isAuthenticated = false) => {
           total: '₹0',
         },
       });
+      setIsBackendOffline(false);
+      setBackendError(null);
       return;
     }
 
@@ -252,7 +258,9 @@ export const useCart = (isAuthenticated = false) => {
         const data = json?.data;
         if (data?.pricing) {
           setGuestPricing(data.pricing);
-          // Enrich local items with server prices if returned
+          setIsBackendOffline(false);
+          setBackendError(null);
+          // Enrich local items with server prices
           if (Array.isArray(data.items) && data.items.length > 0) {
             setItems((prev) =>
               prev.map((it) => {
@@ -276,9 +284,16 @@ export const useCart = (isAuthenticated = false) => {
             );
           }
         }
+      } else {
+        if (res.status >= 500) {
+          setIsBackendOffline(true);
+          setBackendError('Backend pricing engine unavailable');
+        }
       }
     } catch (e) {
-      console.warn('Failed to calculate server pricing for guest cart:', e);
+      console.warn('Backend server is offline or unreachable:', e);
+      setIsBackendOffline(true);
+      setBackendError('Unable to connect to Evoluir server');
     }
   }, []);
 
@@ -296,21 +311,36 @@ export const useCart = (isAuthenticated = false) => {
         if (res.ok) {
           const json = await res.json();
           cartData = json?.data?.cart;
+        } else if (res.status >= 500) {
+          throw new Error('Backend server returned internal error');
         }
       }
 
       if (cartData) {
         setServerCart(cartData);
         setIsServerCart(true);
+        setIsBackendOffline(false);
+        setBackendError(null);
       }
     } catch (e) {
-      console.error('Failed to load server cart:', e);
+      console.warn('Failed to load server cart from backend:', e);
+      setIsBackendOffline(true);
+      setBackendError('Evoluir backend server is offline or unreachable');
+      // Do NOT fall back to stale browser history / localStorage items
+      setIsServerCart(false);
+      setServerCart(null);
     } finally {
       setLoadingCart(false);
     }
   }, [isAuthenticated]);
 
+  // Primary loader triggered when auth status is known
   useEffect(() => {
+    if (!authReady) {
+      setLoadingCart(true);
+      return;
+    }
+
     if (isAuthenticated) {
       loadServerCart();
     } else {
@@ -321,30 +351,93 @@ export const useCart = (isAuthenticated = false) => {
       setLoadingCart(true);
       fetchGuestPricing(local).finally(() => setLoadingCart(false));
     }
-  }, [isAuthenticated, loadServerCart, fetchGuestPricing]);
+  }, [authReady, isAuthenticated, loadServerCart, fetchGuestPricing]);
 
+  // Prevent stale data from browser history (bfcache) or hidden tab restores
   useEffect(() => {
-    const handleUpdate = () => {
-      const local = getCart();
-      setItems(local);
-      if (isAuthenticated) {
-        loadServerCart();
-      } else {
+    const handlePageShow = (event) => {
+      // event.persisted is true when restored from bfcache / browser back-forward history
+      if (event.persisted) {
+        if (isAuthenticated) {
+          loadServerCart();
+        } else {
+          const local = getCart();
+          setItems(local);
+          fetchGuestPricing(local);
+        }
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (isAuthenticated) {
+          loadServerCart();
+        } else {
+          const local = getCart();
+          setItems(local);
+          fetchGuestPricing(local);
+        }
+      }
+    };
+
+    const handleStorage = () => {
+      if (!isAuthenticated) {
+        const local = getCart();
+        setItems(local);
         fetchGuestPricing(local);
       }
     };
 
-    window.addEventListener(CART_EVENT, handleUpdate);
-    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener(CART_EVENT, handleStorage);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
-      window.removeEventListener(CART_EVENT, handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener(CART_EVENT, handleStorage);
+      window.removeEventListener('storage', handleStorage);
     };
   }, [isAuthenticated, loadServerCart, fetchGuestPricing]);
 
-  // Active items: server items when authenticated, otherwise local items
-  const activeItems = isServerCart && serverCart?.items ? serverCart.items : items;
+  // Auto-reconnect polling when backend is offline
+  useEffect(() => {
+    if (!isBackendOffline) {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      return;
+    }
+
+    const pollHealth = async () => {
+      try {
+        const res = await fetch('/health', { cache: 'no-store' });
+        if (res.ok) {
+          setIsBackendOffline(false);
+          setBackendError(null);
+          if (isAuthenticated) {
+            loadServerCart();
+          } else {
+            fetchGuestPricing(getCart());
+          }
+          return;
+        }
+      } catch {
+        // Still offline, schedule next poll
+      }
+      retryTimeoutRef.current = setTimeout(pollHealth, 3500);
+    };
+
+    retryTimeoutRef.current = setTimeout(pollHealth, 3500);
+
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
+  }, [isBackendOffline, isAuthenticated, loadServerCart, fetchGuestPricing]);
+
+  // Active items: strictly server items when authenticated; local items only for unauthenticated guests
+  const activeItems = isAuthenticated
+    ? (isServerCart && serverCart?.items ? serverCart.items : [])
+    : items;
 
   // Active pricing object calculated exclusively by backend PostgreSQL
   const activePricing = isServerCart && serverCart?.pricing
@@ -417,6 +510,7 @@ export const useCart = (isAuthenticated = false) => {
             const updated = json?.data?.cart;
             if (updated) {
               setServerCart(updated);
+              setIsBackendOffline(false);
             }
           }
           // Also clean localStorage in case any legacy key remained
@@ -587,6 +681,16 @@ export const useCart = (isAuthenticated = false) => {
     window.dispatchEvent(new Event(CART_EVENT));
   }, [isAuthenticated]);
 
+  const handleRetryConnection = useCallback(() => {
+    setIsBackendOffline(false);
+    setLoadingCart(true);
+    if (isAuthenticated) {
+      loadServerCart();
+    } else {
+      fetchGuestPricing(getCart()).finally(() => setLoadingCart(false));
+    }
+  }, [isAuthenticated, loadServerCart, fetchGuestPricing]);
+
   return {
     items: activeItems,
     serverCart,
@@ -594,6 +698,9 @@ export const useCart = (isAuthenticated = false) => {
     loadingCart,
     isMutating,
     mutatingItemId,
+    isBackendOffline,
+    backendError,
+    retryConnection: handleRetryConnection,
     totalCount,
     pricing: activePricing,
     subtotal: activePricing.subtotal_rupees,

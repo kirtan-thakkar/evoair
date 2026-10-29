@@ -24,6 +24,9 @@ const Cart = () => {
     loadingCart,
     isMutating,
     mutatingItemId,
+    isBackendOffline,
+    backendError,
+    retryConnection,
     totalCount,
     pricing,
     subtotal,
@@ -33,7 +36,7 @@ const Cart = () => {
     addToCart,
     updateQuantity,
     removeFromCart,
-  } = useCart(isAuthenticated);
+  } = useCart(isAuthenticated, authReady);
 
   // Modals & Order confirmation
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -89,6 +92,32 @@ const Cart = () => {
                 : `${totalCount} item${totalCount === 1 ? '' : 's'} ready for checkout`}
             </p>
           </div>
+
+          {/* ── Backend Offline Reconnect Status ── */}
+          {isBackendOffline && (
+            <div className="backend-offline-banner">
+              <div className="backend-offline-content">
+                <div className="backend-offline-icon-wrap">
+                  <span className="backend-offline-dot" />
+                  <span className="backend-offline-ping" />
+                </div>
+                <div className="backend-offline-text">
+                  <h4 className="backend-offline-title">Connecting to Live Server…</h4>
+                  <p className="backend-offline-sub">
+                    {backendError || 'Attempting to establish live database connection. Ignoring stale browser history.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="backend-offline-retry-btn"
+                onClick={retryConnection}
+                disabled={loadingCart}
+              >
+                {loadingCart ? 'Connecting…' : 'Retry Now'}
+              </button>
+            </div>
+          )}
 
           {orderComplete ? (
             <div className="cart-empty-state cart-success-state">

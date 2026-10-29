@@ -23,6 +23,9 @@ const CheckoutPage = () => {
     serverCart,
     isServerCart,
     loadingCart,
+    isBackendOffline,
+    backendError,
+    retryConnection,
     pricing,
     subtotal,
     shippingFee,
@@ -30,7 +33,7 @@ const CheckoutPage = () => {
     formattedPricing,
     clearCart,
     reloadCart,
-  } = useCart(isAuthenticated);
+  } = useCart(isAuthenticated, authReady);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -315,6 +318,31 @@ const CheckoutPage = () => {
                     )}
                   </div>
 
+                  {isBackendOffline && (
+                    <div className="backend-offline-banner" style={{ marginBottom: '20px' }}>
+                      <div className="backend-offline-content">
+                        <div className="backend-offline-icon-wrap">
+                          <span className="backend-offline-dot" />
+                          <span className="backend-offline-ping" />
+                        </div>
+                        <div className="backend-offline-text">
+                          <h4 className="backend-offline-title">Connecting to Live Server…</h4>
+                          <p className="backend-offline-sub">
+                            {backendError || 'Attempting to verify live order items in PostgreSQL. Stale browser history is ignored.'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="backend-offline-retry-btn"
+                        onClick={retryConnection}
+                        disabled={loadingCart}
+                      >
+                        {loadingCart ? 'Connecting…' : 'Retry'}
+                      </button>
+                    </div>
+                  )}
+
                   {orderError && (
                     <div className="checkout-error-banner" style={{ marginBottom: '20px' }}>
                       <span>⚠</span>
@@ -426,10 +454,12 @@ const CheckoutPage = () => {
                     <button
                       type="submit"
                       className="checkout-submit-btn"
-                      disabled={submitting || (!displayItems.length && !loadingCart)}
+                      disabled={submitting || isBackendOffline || (!displayItems.length && !loadingCart)}
                     >
                       {submitting
                         ? 'Creating Order in Database...'
+                        : isBackendOffline
+                        ? 'Waiting for Server Connection…'
                         : `Place Order & Confirm · ₹${totalAmountRupees.toLocaleString('en-IN')}`}
                     </button>
                   </form>

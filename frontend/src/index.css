@@ -4532,3 +4532,99 @@ footer {
 .cart-price-updating {
   animation: luxuryPulse 1s ease-in-out infinite;
 }
+
+
+/* ==========================================================================
+   Backend Offline Live Status & Reconnect Loader
+   ========================================================================== */
+.backend-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(255, 112, 112, 0.08);
+  border: 1px solid rgba(255, 112, 112, 0.28);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  backdrop-filter: blur(16px);
+  animation: luxuryPulse 2s ease-in-out infinite;
+}
+
+.backend-offline-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.backend-offline-icon-wrap {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.backend-offline-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff7070;
+  border-radius: 50%;
+}
+
+.backend-offline-ping {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ff7070;
+  border-radius: 50%;
+  animation: radarPing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes radarPing {
+  75%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.backend-offline-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+  letter-spacing: 0.02em;
+  font-family: Satoshi, sans-serif !important;
+}
+
+.backend-offline-sub {
+  color: #a0a0a5;
+  font-size: 11.5px;
+  margin: 0;
+  line-height: 1.4;
+  font-family: Satoshi, sans-serif !important;
+}
+
+.backend-offline-retry-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: Satoshi, sans-serif !important;
+}
+
+.backend-offline-retry-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}

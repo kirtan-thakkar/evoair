@@ -72,6 +72,7 @@ export const apiFetch = async (endpoint, options = {}) => {
   }
 
   const fetchOptions = {
+    cache: 'no-store',
     ...options,
     headers,
     credentials: options.credentials || 'include',

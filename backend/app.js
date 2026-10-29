@@ -85,6 +85,15 @@ app.use(cookieParser());
 // 6. Response Compression
 app.use(compression());
 
+// Prevent browser and proxy caching on all API routes so data is always fresh from backend
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 // --- ROUTES ---
 
 // Health check endpoint (PostgreSQL ping)
