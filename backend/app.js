@@ -38,8 +38,23 @@ app.use(
   })
 );
 
-// 2. CORS (Strict allowed origin with credentials)
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+// 2. CORS (Allows development localhost ports 5173, 5174, etc., with credentials)
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      if (env.NODE_ENV !== 'production' && isLocalhost) {
+        return callback(null, true);
+      }
+      if (env.CORS_ORIGIN && origin === env.CORS_ORIGIN) {
+        return callback(null, true);
+      }
+      return callback(null, env.NODE_ENV !== 'production');
+    },
+    credentials: true,
+  })
+);
 
 // 3. Request Logging & Tracing with sensitive header redaction
 app.use(
@@ -66,7 +81,7 @@ app.use(
 // 4. Global IP Rate Limiter across all routes and pages (Anti-scraping & DDoS protection)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // 200 requests per 15 minutes per IP
+  max: env.NODE_ENV === 'production' ? 200 : 50000, // Generous in dev (50,000) to prevent false offline lockouts
   standardHeaders: true,
   legacyHeaders: false,
   message: {

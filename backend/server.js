@@ -26,6 +26,14 @@ const startServer = async () => {
   server = app.listen(PORT, () => {
     logger.info(`Server running in ${env.NODE_ENV} mode on port ${PORT}`);
   });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is already in use by another process. Please close existing node instances.`);
+    } else {
+      logger.error({ err }, 'Server error:');
+    }
+  });
 };
 
 startServer();

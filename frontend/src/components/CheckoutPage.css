@@ -11,7 +11,7 @@
   position: relative;
 }
 
-.checkout-page *:not(.checkout-nav-wordmark) {
+.checkout-page *:not(.checkout-nav-wordmark):not(.checkout-title):not(.checkout-title *) {
   font-family: Satoshi-Variable, Satoshi, sans-serif;
 }
 
@@ -110,12 +110,12 @@
 }
 
 .checkout-title {
-  font-family: Satoshi-Variable, Satoshi, sans-serif !important;
-  font-size: clamp(28px, 4vw, 40px);
-  font-weight: 700;
+  font-family: 'Tulpen One', cursive !important;
+  font-size: clamp(64px, 8vw, 100px);
+  font-weight: 400;
   text-transform: uppercase;
-  line-height: 1.15;
-  letter-spacing: 0.02em;
+  line-height: 0.88;
+  letter-spacing: 0.05em;
   color: #ffffff;
   margin: 0 0 12px 0;
 }
