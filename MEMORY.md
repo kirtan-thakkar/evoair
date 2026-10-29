@@ -111,6 +111,31 @@ Evoair/
    - Collaborator pushed compiled luxury UI to `origin/gh-pages` (enhanced mobile bottom nav blur, GPU acceleration, 2-column luxury AuthModal).
    - Scrapped old frontend and cleanly deployed the new production build to `frontend/dist`.
    - Configured Express static serving and Vite dev/preview proxies to bridge frontend and backend.
+6. **Milestone 6 — Complete React Component Architecture Conversion from `gh-pages`**:
+   - Extracted complete CSS payload from `origin/gh-pages` (`AuthModal-C3HCHj1L.css` + `main-CDTwyJj2.css`), combined with local Satoshi fonts and Google Fonts (`Tulpen One`, `Tajawal`), into `frontend/src/index.css`.
+   - Reconstructed `AuthModal.jsx` and `AuthNavButton` directly from `origin/gh-pages:assets/AuthModal-CYbOxYu_.js`, providing 2-column luxury brand showcase, "+91" phone input formatting, and responsive mobile popover.
+   - Built modular `AccordionGallery.jsx` component for mobile 3D technology stats.
+   - Built modular floating luxury pill navigation (`.luxury-nav`, `.nav-actions-cluster`, `Shop`, `CartNavButton`, `AuthNavButton`).
+   - Wired full GSAP timeline, Lenis smooth scrolling, `CardSwap`, `Masonry`, `MagicRings`, `ModelViewer`, and `BlackHole` in `frontend/src/App.jsx`.
+   - Fixed `backend/server.js` startup lifecycle: properly logged Pino error objects (`{ err }`) and made dev server non-blocking when PostgreSQL is not yet running on port 5432, guiding developers to start Docker (`docker compose up -d`).
+7. **Milestone 7 — Mobile Experience Perfection & Auto-Sliding Tech Carousel**:
+   - Replaced cramped vertical accordion on mobile with a luxury auto-sliding carousel ([`TechMobileCarousel.jsx`](file:///c:/ideakicks/Evoair/frontend/src/components/TechMobileCarousel.jsx) & [`TechMobileCarousel.css`](file:///c:/ideakicks/Evoair/frontend/src/components/TechMobileCarousel.css)). Features 3.5s auto-slide timer, touch swipe gestures, sleek glass navigation arrows, active dot indicators with glowing orange accent pill, slide counter, and Tulpen One stat typography.
+   - Fixed mobile responsiveness across Section 1 (Hero `#scroll-hint` offset cleanly above bottom nav pill), Section 2 (Airflow centered typography and portrait), and Section 3 (Craftsmanship `CardSwap` scaled dynamically to mobile width without overflow or voids).
+   - Preserved 3-column `Masonry` grid on desktop displays.
+8. **Milestone 8 — Products Switcher Tabs Logo & Motion Pan-Up Animation**:
+   - Added butterfly brand logo into the first tab (`Evo-Air Device`) with dynamic active contrast inversion (`filter: brightness(0)` on white pill vs `brightness(0) invert(1)` on dark background).
+   - Wired Motion spring sliding pill (`layoutId="active-product-pill"` with `stiffness: 450, damping: 35`) across the product switcher buttons and formula selector buttons (`layoutId="active-formula-pill"`).
+   - Implemented `<AnimatePresence mode="wait">` smooth pan-up animation (`initial={{ opacity: 0, y: 16 }}`, `animate={{ opacity: 1, y: 0 }}`, `exit={{ opacity: 0, y: -16 }}`) for both the left description pane and the right product visual when switching tabs.
+   - Restored interactive SVG window shade coloring for `evofills` that dynamically tints the pod window with the selected shade swatch.
+   - Extracted high-res unibody assets (`evoair-render.png`, `evofill-shell.png`, `evofill-window-shading.png`) from `origin/gh-pages`.
+   - Verified across mobile (390x844) and desktop (1280x800) via Playwright.
+9. **Milestone 9 — Multi-Page Architecture (MPA) Decoupling & Real URL Routing**:
+   - Eliminated single-page hash hijacking (`#products`, `#cart`) that swapped in-place React divs on the landing page.
+   - Enforced true multi-page document navigation: `/` loads [`index.html`](file:///c:/ideakicks/Evoair/frontend/index.html), `/products` loads [`products.html`](file:///c:/ideakicks/Evoair/frontend/products.html), and `/cart` loads [`cart.html`](file:///c:/ideakicks/Evoair/frontend/cart.html).
+   - Updated all navigational links in bottom bar (`Shop` -> `/products`), pricing section (`Acquire Now` -> `/products`), and cart button (`CartNavButton` -> `/cart`).
+   - Added automatic legacy hash redirect in [`App.jsx`](file:///c:/ideakicks/Evoair/frontend/src/App.jsx) to ensure any existing `#products` or `#cart` URLs seamlessly navigate to their dedicated HTML pages.
+   - Reduced Home bundle chunk size by 140 kB by isolating `Products` and `Cart` dependencies into their respective page bundles.
+   - Verified end-to-end full page transitions across `/`, `/products`, and `/cart` using Playwright.
 
 ---
 
