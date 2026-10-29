@@ -66,7 +66,7 @@ export const products = pgTable('products', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// 4. Product Variants (Shades)
+// 4. Product Variants (Shades & Formulas)
 export const productVariants = pgTable(
   'product_variants',
   {
@@ -74,8 +74,10 @@ export const productVariants = pgTable(
     product_id: uuid('product_id')
       .references(() => products.id, { onDelete: 'cascade' })
       .notNull(),
+    formula: varchar('formula', { length: 50 }).default('foundation').notNull(),
     shade_name: text('shade_name').notNull(),
     shade_code: varchar('shade_code', { length: 50 }).notNull(),
+    color_hex: varchar('color_hex', { length: 20 }),
     sku: varchar('sku', { length: 100 }).notNull().unique(),
     price_paise: integer('price_paise').notNull(),
     stock_qty: integer('stock_qty').notNull(),
@@ -84,15 +86,17 @@ export const productVariants = pgTable(
   },
   (table) => [
     index('product_variants_product_id_idx').on(table.product_id),
+    index('product_variants_formula_idx').on(table.formula),
     check('product_variants_stock_qty_check', sql`${table.stock_qty} >= 0`),
   ]
 );
 
-// 5. Orders (Includes Expected Delivery Date)
+// 5. Orders (Includes Expected Delivery Date & Order Number)
 export const orders = pgTable(
   'orders',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    order_number: varchar('order_number', { length: 50 }).unique(),
     user_id: uuid('user_id')
       .references(() => users.id)
       .notNull(),

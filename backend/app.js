@@ -117,6 +117,24 @@ app.get(['/products', '/products.html', '/Evoair/products', '/Evoair/products.ht
 app.get(['/cart', '/cart.html', '/Evoair/cart', '/Evoair/cart.html'], (req, res) => {
   res.sendFile(path.join(frontendDist, 'cart.html'));
 });
+app.get(['/checkout', '/checkout.html', '/Evoair/checkout', '/Evoair/checkout.html'], (req, res) => {
+  res.sendFile(path.join(frontendDist, 'checkout.html'));
+});
+app.get(
+  [
+    '/orders',
+    '/orders.html',
+    '/Evoair/orders',
+    '/Evoair/orders.html',
+    '/:id/orders',
+    '/Evoair/:id/orders',
+    '/user/:id/orders',
+    '/Evoair/user/:id/orders',
+  ],
+  (req, res) => {
+    res.sendFile(path.join(frontendDist, 'orders.html'));
+  }
+);
 app.get(['/', '/index.html', '/Evoair', '/Evoair/index.html'], (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });

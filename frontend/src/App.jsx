@@ -96,7 +96,7 @@ const resolveCurrentRoute = () => {
     return 'home';
   }
   if (hash === '#checkout') {
-    window.location.replace('/cart#checkout');
+    window.location.replace('/checkout');
     return 'home';
   }
   if (hash === '#products') {

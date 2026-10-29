@@ -11,8 +11,10 @@ export const getActiveProducts = async () => {
       productSlug: products.slug,
       productDescription: products.description,
       variantId: productVariants.id,
+      formula: productVariants.formula,
       shadeName: productVariants.shade_name,
       shadeCode: productVariants.shade_code,
+      colorHex: productVariants.color_hex,
       sku: productVariants.sku,
       pricePaise: productVariants.price_paise,
       stockQty: productVariants.stock_qty,
@@ -44,8 +46,10 @@ export const getActiveProducts = async () => {
     if (row.variantId !== null) {
       productsMap.get(row.productId).variants.push({
         id: row.variantId,
+        formula: row.formula,
         shade_name: row.shadeName,
         shade_code: row.shadeCode,
+        color_hex: row.colorHex,
         sku: row.sku,
         price_paise: row.pricePaise,
         in_stock: row.stockQty > 0,
@@ -64,8 +68,10 @@ export const getProductBySlug = async (slug) => {
       productSlug: products.slug,
       productDescription: products.description,
       variantId: productVariants.id,
+      formula: productVariants.formula,
       shadeName: productVariants.shade_name,
       shadeCode: productVariants.shade_code,
+      colorHex: productVariants.color_hex,
       sku: productVariants.sku,
       pricePaise: productVariants.price_paise,
       stockQty: productVariants.stock_qty,
@@ -98,8 +104,10 @@ export const getProductBySlug = async (slug) => {
     if (row.variantId !== null) {
       product.variants.push({
         id: row.variantId,
+        formula: row.formula,
         shade_name: row.shadeName,
         shade_code: row.shadeCode,
+        color_hex: row.colorHex,
         sku: row.sku,
         price_paise: row.pricePaise,
         in_stock: row.stockQty > 0,

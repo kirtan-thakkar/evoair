@@ -147,8 +147,12 @@ export const removeFromCart = (uniqueKey) => {
   return updated;
 };
 
-export const clearCart = () => {
+export const clearCart = (isAuthenticated = false) => {
   saveCart([]);
+  if (isAuthenticated) {
+    api.delete('/api/v1/cart').catch(() => {});
+  }
+  window.dispatchEvent(new Event(CART_EVENT));
 };
 
 /**
@@ -243,8 +247,9 @@ export const useCart = (isAuthenticated = false) => {
 
   useEffect(() => {
     const handleUpdate = () => {
-      if (!isServerCart) {
-        setItems(getCart());
+      setItems(getCart());
+      if (isAuthenticated) {
+        loadServerCart();
       }
     };
 
@@ -268,6 +273,20 @@ export const useCart = (isAuthenticated = false) => {
     ? serverCart?.total_paise || 0
     : activeItems.reduce((sum, item) => sum + (item.numericPrice || 0) * 100 * (item.quantity || 1), 0);
 
+  const handleClearCart = useCallback(async () => {
+    saveCart([]);
+    setItems([]);
+    setServerCart({ items: [], total_count: 0, total_paise: 0 });
+    if (isAuthenticated) {
+      try {
+        await api.delete('/api/v1/cart');
+      } catch (e) {
+        console.error('Failed to clear server cart:', e);
+      }
+    }
+    window.dispatchEvent(new Event(CART_EVENT));
+  }, [isAuthenticated]);
+
   return {
     items: activeItems,
     serverCart,
@@ -279,7 +298,7 @@ export const useCart = (isAuthenticated = false) => {
     addToCart,
     updateQuantity,
     removeFromCart,
-    clearCart,
+    clearCart: handleClearCart,
     reloadCart: loadServerCart,
   };
 };

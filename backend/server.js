@@ -62,11 +62,15 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Handle uncaught exceptions and unhandled rejections globally
 process.on('uncaughtException', (err) => {
-  logger.fatal({ err }, 'Uncaught Exception! Shutting down...');
-  process.exit(1);
+  logger.fatal({ err }, 'Uncaught Exception!');
+  if (env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
 process.on('unhandledRejection', (err) => {
-  logger.fatal({ err }, 'Unhandled Rejection! Shutting down...');
-  gracefulShutdown('unhandledRejection');
+  logger.error({ err }, 'Unhandled Rejection caught:');
+  if (env.NODE_ENV === 'production') {
+    gracefulShutdown('unhandledRejection');
+  }
 });

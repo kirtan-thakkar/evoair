@@ -15,6 +15,14 @@ export default defineConfig({
             req.url = '/products.html';
           } else if (req.url === '/cart' || req.url?.startsWith('/cart?')) {
             req.url = '/cart.html';
+          } else if (req.url === '/checkout' || req.url?.startsWith('/checkout?')) {
+            req.url = '/checkout.html';
+          } else if (
+            req.url === '/orders' ||
+            req.url?.startsWith('/orders?') ||
+            req.url?.match(/^\/[^/]+\/orders(\?.*)?$/)
+          ) {
+            req.url = '/orders.html';
           }
           next();
         });
@@ -45,6 +53,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         products: resolve(__dirname, 'products.html'),
         cart: resolve(__dirname, 'cart.html'),
+        checkout: resolve(__dirname, 'checkout.html'),
+        orders: resolve(__dirname, 'orders.html'),
       },
     },
   },

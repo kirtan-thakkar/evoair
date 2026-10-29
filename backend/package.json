@@ -6,7 +6,8 @@
     "start": "node server.js",
     "test": "vitest run",
     "migrate": "node migrations/run.js",
-    "seed": "node db/seed.js"
+    "seed": "node db/seed.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "axios": "^1.19.0",

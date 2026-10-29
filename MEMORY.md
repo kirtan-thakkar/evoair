@@ -136,12 +136,43 @@ Evoair/
    - Added automatic legacy hash redirect in [`App.jsx`](file:///c:/ideakicks/Evoair/frontend/src/App.jsx) to ensure any existing `#products` or `#cart` URLs seamlessly navigate to their dedicated HTML pages.
    - Reduced Home bundle chunk size by 140 kB by isolating `Products` and `Cart` dependencies into their respective page bundles.
    - Verified end-to-end full page transitions across `/`, `/products`, and `/cart` using Playwright.
+10. **Milestone 10 — Dedicated Checkout Page Architecture (`/checkout`)**:
+    - Replaced the cramped, scroll-trapped modal on `/cart` with a dedicated, full-page checkout document (`checkout.html`, `CheckoutPage.jsx`, `CheckoutPage.css`).
+    - Provides natural window scrolling, 2-column luxury glass grid, Indian mobile & PIN code validation, complimentary shipping badge, and celebration confirmation state.
+    - Updated `Cart.jsx` checkout CTA to directly navigate to `/checkout`.
+11. **Milestone 11 — Dedicated Customer Orders Page (`/:id/orders` & `/orders`)**:
+    - Built customer order history page (`orders.html`, `OrdersPage.jsx`, `OrdersPage.css`).
+    - Prominently showcases the **Expected Delivery Date** banner with courier status, 4-step dispatch progress stepper (Order Placed -> Preparing Dispatch -> In Transit -> Delivered), order line items, recipient delivery address, and PostgreSQL total paise calculations.
+    - Added "My Orders" navigation entry directly into the authenticated user pill dropdown menu (`AuthNavButton` in `AuthModal.jsx`), routing to `/${user.id}/orders`.
+    - Wired multi-page rewrite in `vite.config.js` and Express handler in `backend/app.js` across `/orders` and `/:id/orders`.
+12. **Milestone 12 — Formula Database Schema & 42 Product Variant Expansion**:
+    - Added `formula` and `color_hex` columns to PostgreSQL `product_variants` schema.
+    - Seeded full catalog of 42 variants in `backend/db/seed.js`: 10 Foundation, 5 Blush (`B01`–`B05`), and 5 Highlighter (`H01`–`H05`) for Evo-Air Device, 10 Foundation, 5 Blush, and 5 Highlighter refills for Evo-Fills, plus Evo-Bottles pack.
+    - Exposed `formula` and `color_hex` in catalog services and upgraded `frontend/src/utils/cart.js` with formula-aware variant UUID resolution.
+13. **Milestone 13 — Delivery Fee Model & Typography Harmonization**:
+    - Removed AI-generated delivery callout banner and associated CSS.
+    - Transitioned from complimentary shipping to a flat delivery fee (₹150 standard delivery, configurable via `SHIPPING_FEE_PAISE` in `.env`), recorded in `orders.shipping_paise` and totaled in both `/cart` and `/checkout`.
+    - Standardized all typography on `/checkout` to Satoshi (`Satoshi-Variable, Satoshi, sans-serif`), ensuring all titles, cards, labels, and forms use clean Satoshi sans-serif.
+    - Styled `.checkout-nav-wordmark` and `.orders-nav-wordmark` in the navbar with the official brand font `Tulpen One, cursive` (28px, uppercase, 0.1em letter spacing) matching the main site navbar wordmark.
+
+14. **Milestone 14 — Strict Route Protection for Checkout & Orders**:
+    - Guarded `/checkout` and `/:id/orders` / `/orders` against unauthenticated direct URL visits.
+    - Integrated reactive session protection: displays a dark session verification screen while `!authReady`. As soon as `authReady && !isAuthenticated`, immediately redirects visitors to `/` via `window.location.replace('/')`.
+    - Removed redundant guest banners and sign-in prompt fallbacks from both pages as unauthenticated traffic is automatically deflected.
+
+15. **Milestone 15 — Human-Readable Order Numbers, Rich Variant Items & Timeline Stepper Removal**:
+    - Added `order_number` column (`varchar(50) UNIQUE`) to `orders` table in PostgreSQL schema, migrated database, and backfilled existing orders (e.g. `#EVO-100001`).
+    - Added `generateUniqueOrderNumber` generator in `orderService.js` creating unique human-readable order numbers (e.g. `EVO-849201`).
+    - Updated `getUserOrders`, `getUserOrderById`, and `findExistingOrderWithItems` to perform `innerJoin` on `productVariants` and `products`, enriching order line items with actual product names, shade codes (`02`, `B01`, `H01`), shade names (`Halo`, `Terra Nova`), color hexes, and formula tags.
+    - Updated `OrdersPage.jsx` line items to display shade badges with color swatches and formula indicators instead of raw database UUIDs.
+    - Removed the 4-step progress stepper timeline from `OrdersPage.jsx` and `OrdersPage.css` in favor of a clean manual dispatch notice suitable for manual fulfillment and founder courier coordination.
 
 ---
 
 ## 5. User Preferences & Working Style ("What Kirtan Likes & Rejects")
 
 ### What Kirtan REJECTS (Do NOT do these):
+* ❌ **Do NOT run Playwright automation on every turn**: The user prefers to verify UI changes themselves in the browser. Do not run Playwright tests unless explicitly requested.
 * ❌ **Do NOT overcomplicate / "do too much"**: If a clean, direct solution exists (e.g. swapping the frontend with the verified new build), do that directly rather than creating complex AST parsing or unnecessary manual merge diffs.
 * ❌ **No lingering review or backup folders**: Never leave clutter like `preview_gh_pages` or `frontend_old_backup` visible in the workspace. Clean them up immediately when tasks complete.
 * ❌ **Never use hardcoded IDs or mock bypasses in production**: Hardcoded seed UUIDs (`SEED_VARIANT_UUIDS`) and mock login tokens (`dev_mock_google_token`) are strictly forbidden.
@@ -203,3 +234,26 @@ Evoair/
    - Start the backend and frontend simultaneously and verify live user registration, login, cart synchronization to DB, and order creation.
 3. **AWS EC2 Free Tier Deployment Package**:
    - Prepare a lightweight `Dockerfile` or PM2 setup to deploy the combined Node.js server to an AWS EC2 `t2.micro` / `t3.micro` instance.
+
+
+---
+
+## 8. Milestone 10–16 Implemented Features & Polish
+1. **Dedicated Multi-Page Routes**:
+   - `/checkout` ([CheckoutPage.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/CheckoutPage.jsx)): Dedicated checkout page with full page scrolling, Satoshi typography, and brand Tulpen One header.
+   - `/:id/orders` & `/orders` ([OrdersPage.jsx](file:///c:/ideakicks/Evoair/frontend/src/components/OrdersPage.jsx)): Dedicated orders page accessible via the user profile dropdown in the top navbar.
+2. **Route Protection**:
+   - Both `/checkout` and `/orders` immediately redirect unauthenticated visitors to `/` (`window.location.replace('/')`).
+3. **Typography & Styling**:
+   - Satoshi standardized across checkout and orders pages.
+   - Wordmark 'EVOLUIR' styled with brand font `Tulpen One, cursive` (uppercase, letter-spacing 0.1em).
+4. **Order Management & Fulfillment Model**:
+   - Database column `order_number` (`varchar(50) UNIQUE`) added to `orders` table with format `EVO-XXXXXX`.
+   - Rich variant metadata joined (`product_variants` & `products`): displaying actual shade name, hex swatch badge, shade code (e.g., `02`, `B01`), and formula title instead of raw UUIDs.
+   - Removed progress stepper / delivery pipeline from orders view in favor of founder direct delivery dispatch.
+   - Automated cart clearing upon order placement both in DB transaction and frontend cart state.
+   - Removed promo code input and VIP discounts from cart.
+   - Flat standard delivery fee (₹150 default, `SHIPPING_FEE_PAISE`).
+5. **Backend Server Dev Resilience**:
+   - In [backend/server.js](file:///c:/ideakicks/Evoair/backend/server.js), `unhandledRejection` and `uncaughtException` in development log errors without terminating the Node process (`gracefulShutdown` only triggers when `NODE_ENV === 'production'`).
+   - Added `"dev": "node --watch server.js"` in [backend/package.json](file:///c:/ideakicks/Evoair/backend/package.json) for automatic hot reload.

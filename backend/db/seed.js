@@ -1,8 +1,8 @@
 /**
  * Seed data for EvoAir Storefront (UUID Enabled)
+ * Includes complete Foundation, Blush, and Highlighter shade formulas
  */
 import 'dotenv/config';
-import { eq } from 'drizzle-orm';
 import { db, closeDb } from '../config/db.js';
 import { env } from '../config/env.js';
 import { products, productVariants } from './schema.js';
@@ -18,26 +18,43 @@ export const SEED_PRODUCT_IDS = {
   EVO_BOTTLES: '00000000-0000-4000-8000-000000000003',
 };
 
-export const SEED_VARIANT_IDS = {
-  'EVO-01': '11111111-1111-4111-8111-000000000001',
-  'EVO-02': '11111111-1111-4111-8111-000000000002',
-  'EVO-03': '11111111-1111-4111-8111-000000000003',
-  'EVO-04': '11111111-1111-4111-8111-000000000004',
-  'EVO-05': '11111111-1111-4111-8111-000000000005',
-  'EVO-06': '11111111-1111-4111-8111-000000000006',
-  'EVO-07': '11111111-1111-4111-8111-000000000007',
-  'EVO-08': '11111111-1111-4111-8111-000000000008',
-  'EVO-09': '11111111-1111-4111-8111-000000000009',
-  'EVO-10': '11111111-1111-4111-8111-000000000010',
-  'EVO-FILL-10': '11111111-1111-4111-8111-000000000051',
-  'EVO-BOTTLE-20': '11111111-1111-4111-8111-000000000052',
-};
+// Foundation Shades (10)
+export const FOUNDATION_SHADES = [
+  { code: '02', name: 'Halo', color: '#d8a978' },
+  { code: '03', name: 'Flare', color: '#e7b894' },
+  { code: '06', name: 'Serene', color: '#d19a57' },
+  { code: '07', name: 'Astra', color: '#b18368' },
+  { code: '10', name: 'Amber', color: '#c98a4a' },
+  { code: '11', name: 'Dawn', color: '#b87543' },
+  { code: '14', name: 'Cosmic', color: '#9b621f' },
+  { code: '15', name: 'Stardusk', color: '#a96e3b' },
+  { code: '18', name: 'Galaxy', color: '#8a542e' },
+  { code: '19', name: 'Nebula', color: '#61341f' },
+];
+
+// Blush Shades (5)
+export const BLUSH_SHADES = [
+  { code: 'B01', name: 'Terra Nova', color: '#a84f34' },
+  { code: 'B02', name: 'Sun Halo', color: '#ec7554' },
+  { code: 'B03', name: 'Stellar Rose', color: '#d75068' },
+  { code: 'B04', name: 'Comet Glow', color: '#e53935' },
+  { code: 'B05', name: 'Pink Constellation', color: '#e98676' },
+];
+
+// Highlighter Shades (5)
+export const HIGHLIGHTER_SHADES = [
+  { code: 'H01', name: 'Moonveil', color: '#e9d9c6' },
+  { code: 'H02', name: 'Cosmic Bronze', color: '#c7774a' },
+  { code: 'H03', name: 'Sun Halo', color: '#dca46a' },
+  { code: 'H04', name: 'Celestial Glow', color: '#e8c79d' },
+  { code: 'H05', name: 'Rose Nebula', color: '#df8e9b' },
+];
 
 const seed = async () => {
   try {
-    console.log('🌱 Starting database seeding with UUIDs...');
+    console.log('🌱 Starting database seeding with Foundation, Blush, and Highlighter formulas...');
 
-    // 1. Insert product: EvoAir
+    // 1. Insert product: EvoAir Device
     await db
       .insert(products)
       .values({
@@ -49,89 +66,182 @@ const seed = async () => {
       })
       .onConflictDoNothing({ target: products.slug });
 
-    // 2. Insert 10 shade variants for EvoAir
-    const variantsData = [
-      { id: SEED_VARIANT_IDS['EVO-01'], shade_name: 'Halo', shade_code: '02', sku: 'EVO-01', price_paise: 280000, stock_qty: 50 },
-      { id: SEED_VARIANT_IDS['EVO-02'], shade_name: 'Flare', shade_code: '03', sku: 'EVO-02', price_paise: 280000, stock_qty: 50 },
-      { id: SEED_VARIANT_IDS['EVO-03'], shade_name: 'Serene', shade_code: '06', sku: 'EVO-03', price_paise: 280000, stock_qty: 30 },
-      { id: SEED_VARIANT_IDS['EVO-04'], shade_name: 'Astra', shade_code: '07', sku: 'EVO-04', price_paise: 280000, stock_qty: 40 },
-      { id: SEED_VARIANT_IDS['EVO-05'], shade_name: 'Amber', shade_code: '10', sku: 'EVO-05', price_paise: 280000, stock_qty: 25 },
-      { id: SEED_VARIANT_IDS['EVO-06'], shade_name: 'Dawn', shade_code: '11', sku: 'EVO-06', price_paise: 280000, stock_qty: 20 },
-      { id: SEED_VARIANT_IDS['EVO-07'], shade_name: 'Cosmic', shade_code: '14', sku: 'EVO-07', price_paise: 280000, stock_qty: 15 },
-      { id: SEED_VARIANT_IDS['EVO-08'], shade_name: 'Stardusk', shade_code: '15', sku: 'EVO-08', price_paise: 280000, stock_qty: 35 },
-      { id: SEED_VARIANT_IDS['EVO-09'], shade_name: 'Galaxy', shade_code: '18', sku: 'EVO-09', price_paise: 280000, stock_qty: 10 },
-      { id: SEED_VARIANT_IDS['EVO-10'], shade_name: 'Nebula', shade_code: '19', sku: 'EVO-10', price_paise: 280000, stock_qty: 0 },
-    ];
-
-    for (const v of variantsData) {
-      await db
-        .insert(productVariants)
-        .values({
-          id: v.id,
-          product_id: SEED_PRODUCT_IDS.EVOAIR,
-          shade_name: v.shade_name,
-          shade_code: v.shade_code,
-          sku: v.sku,
-          price_paise: v.price_paise,
-          stock_qty: v.stock_qty,
-          is_active: true,
-        })
-        .onConflictDoNothing({ target: productVariants.sku });
-    }
-
-    // 3. Insert Evo-Fills Refills Product & Variant
+    // 2. Insert product: Evo-Fills Refills
     await db
       .insert(products)
       .values({
         id: SEED_PRODUCT_IDS.EVO_FILLS,
         name: 'Evo-Fills Refills',
         slug: 'evo-fills',
-        description: '10 Pre-filled sterile formula capsules for zero mess and ultra-pure atomization.',
+        description: 'Sterile pre-filled formula capsules for flawless airbrushed misting.',
         is_active: true,
       })
       .onConflictDoNothing({ target: products.slug });
 
-    await db
-      .insert(productVariants)
-      .values({
-        id: SEED_VARIANT_IDS['EVO-FILL-10'],
-        product_id: SEED_PRODUCT_IDS.EVO_FILLS,
-        shade_name: 'Pre-filled Capsules (Pack of 10)',
-        shade_code: 'CAPSULE-10',
-        sku: 'EVO-FILL-10',
-        price_paise: 250000,
-        stock_qty: 50,
-        is_active: true,
-      })
-      .onConflictDoNothing({ target: productVariants.sku });
-
-    // 4. Insert Evo-Bottles Empty (Pack of 20 Empty Capsules)
+    // 3. Insert product: Evo-Bottles Empty
     await db
       .insert(products)
       .values({
         id: SEED_PRODUCT_IDS.EVO_BOTTLES,
         name: 'Evo-Bottles Empty',
         slug: 'evo-bottles',
-        description: 'Pack of 20 empty refillable capsules. Compatible with your own foundation formulas.',
+        description: 'Pack of 20 empty refillable capsules compatible with your personal formulas.',
         is_active: true,
       })
       .onConflictDoNothing({ target: products.slug });
 
-    await db
-      .insert(productVariants)
-      .values({
-        id: SEED_VARIANT_IDS['EVO-BOTTLE-20'],
-        product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
-        shade_name: 'Empty Capsules (Pack of 20)',
-        shade_code: 'BOTTLE-20',
-        sku: 'EVO-BOTTLE-20',
-        price_paise: 179900,
-        stock_qty: 0,
-        is_active: true,
-      })
-      .onConflictDoNothing({ target: productVariants.sku });
+    const allVariants = [];
 
-    console.log('✅ Seeding with UUIDs completed successfully.');
+    // ── EvoAir Device Starter Variants (₹14,999) ──
+    FOUNDATION_SHADES.forEach((s, idx) => {
+      const numStr = String(idx + 1).padStart(2, '0');
+      allVariants.push({
+        id: `11111111-1111-4111-8111-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVOAIR,
+        formula: 'foundation',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `EVO-${numStr}`,
+        price_paise: 1499900,
+        stock_qty: 50,
+      });
+    });
+
+    BLUSH_SHADES.forEach((s, idx) => {
+      const numStr = String(11 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `11111111-1111-4111-8111-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVOAIR,
+        formula: 'blush',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `EVO-${s.code}`,
+        price_paise: 1499900,
+        stock_qty: 40,
+      });
+    });
+
+    HIGHLIGHTER_SHADES.forEach((s, idx) => {
+      const numStr = String(21 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `11111111-1111-4111-8111-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVOAIR,
+        formula: 'highlighter',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `EVO-${s.code}`,
+        price_paise: 1499900,
+        stock_qty: 40,
+      });
+    });
+
+    // ── Evo-Fills Foundation Refill Variants (₹2,800) ──
+    FOUNDATION_SHADES.forEach((s, idx) => {
+      const numStr = String(idx + 1).padStart(2, '0');
+      allVariants.push({
+        id: `22222222-2222-4222-8222-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_FILLS,
+        formula: 'foundation',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `FILL-FND-${s.code}`,
+        price_paise: 280000,
+        stock_qty: 60,
+      });
+    });
+
+    // ── Evo-Fills Blush Refill Variants (5 shades, ₹2,500) ──
+    BLUSH_SHADES.forEach((s, idx) => {
+      const numStr = String(11 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `22222222-2222-4222-8222-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_FILLS,
+        formula: 'blush',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `FILL-BLUSH-${s.code}`,
+        price_paise: 250000,
+        stock_qty: 50,
+      });
+    });
+
+    // ── Evo-Fills Highlighter Refill Variants (5 shades, ₹2,650) ──
+    HIGHLIGHTER_SHADES.forEach((s, idx) => {
+      const numStr = String(21 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `22222222-2222-4222-8222-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_FILLS,
+        formula: 'highlighter',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `FILL-HL-${s.code}`,
+        price_paise: 265000,
+        stock_qty: 45,
+      });
+    });
+
+    // ── Legacy Evo-Fill 10-Pack Refills (₹2,500) ──
+    allVariants.push({
+      id: '11111111-1111-4111-8111-000000000051',
+      product_id: SEED_PRODUCT_IDS.EVO_FILLS,
+      formula: 'foundation',
+      shade_name: 'Pre-filled Capsules (Pack of 10)',
+      shade_code: 'CAPSULE-10',
+      color_hex: '#d8a978',
+      sku: 'EVO-FILL-10',
+      price_paise: 250000,
+      stock_qty: 50,
+    });
+
+    // ── Evo-Bottles Empty (Pack of 20, ₹1,799) ──
+    allVariants.push({
+      id: '11111111-1111-4111-8111-000000000052',
+      product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
+      formula: 'accessories',
+      shade_name: 'Empty Capsules (Pack of 20)',
+      shade_code: 'BOTTLE-20',
+      color_hex: '#ffffff',
+      sku: 'EVO-BOTTLE-20',
+      price_paise: 179900,
+      stock_qty: 50,
+    });
+
+    // Insert or update all variants
+    for (const v of allVariants) {
+      await db
+        .insert(productVariants)
+        .values({
+          id: v.id,
+          product_id: v.product_id,
+          formula: v.formula,
+          shade_name: v.shade_name,
+          shade_code: v.shade_code,
+          color_hex: v.color_hex,
+          sku: v.sku,
+          price_paise: v.price_paise,
+          stock_qty: v.stock_qty,
+          is_active: true,
+        })
+        .onConflictDoUpdate({
+          target: productVariants.id,
+          set: {
+            formula: v.formula,
+            shade_name: v.shade_name,
+            shade_code: v.shade_code,
+            color_hex: v.color_hex,
+            price_paise: v.price_paise,
+            stock_qty: v.stock_qty,
+          },
+        });
+    }
+
+    console.log(`✅ Successfully seeded ${allVariants.length} product variants across Foundation, Blush, and Highlighter!`);
   } catch (err) {
     console.error('❌ Seeding failed:', err);
     process.exit(1);

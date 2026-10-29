@@ -31,85 +31,16 @@ const Cart = () => {
     removeFromCart,
   } = useCart(isAuthenticated);
 
-  const [promoCode, setPromoCode] = useState('');
-  const [discount, setDiscount] = useState(0);
-  const [promoMessage, setPromoMessage] = useState('');
-
-  // Modals & Order placement state
+  // Modals & Order confirmation
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [orderComplete, setOrderComplete] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [orderError, setOrderError] = useState('');
-
-  // Shipping Address Form State
-  const [shippingAddress, setShippingAddress] = useState({
-    name: '',
-    phone: '',
-    line1: '',
-    line2: '',
-    city: '',
-    state: '',
-    pincode: '',
-  });
-
-  // Pre-fill user name and phone
-  useEffect(() => {
-    if (user) {
-      setShippingAddress((prev) => ({
-        ...prev,
-        name: prev.name || user.name || '',
-        phone: prev.phone || user.phone || '',
-      }));
-    }
-  }, [user]);
-
-  // Stable Idempotency-Key Lifecycle
-  const idempotencyKeyRef = useRef(null);
-  const addressFingerprintRef = useRef('');
-  const cartFingerprintRef = useRef('');
-
-  const getOrCreateIdempotencyKey = useCallback(() => {
-    const currentAddrFingerprint = JSON.stringify(shippingAddress);
-    const cartItemsList = serverCart?.items || items;
-    const currentCartFingerprint = JSON.stringify(
-      cartItemsList.map((i) => `${i.variant_id || i.variantId}-${i.quantity}`)
-    );
-
-    if (
-      !idempotencyKeyRef.current ||
-      addressFingerprintRef.current !== currentAddrFingerprint ||
-      cartFingerprintRef.current !== currentCartFingerprint
-    ) {
-      idempotencyKeyRef.current = `ord-${crypto.randomUUID()}`;
-      addressFingerprintRef.current = currentAddrFingerprint;
-      cartFingerprintRef.current = currentCartFingerprint;
-    }
-
-    return idempotencyKeyRef.current;
-  }, [shippingAddress, serverCart, items]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleApplyPromo = (e) => {
-    e.preventDefault();
-    if (!promoCode.trim()) return;
-
-    if (promoCode.trim().toUpperCase() === 'EVO10') {
-      setDiscount(0.1);
-      setPromoMessage('10% VIP discount applied!');
-    } else if (promoCode.trim().toUpperCase() === 'STARCAST') {
-      setDiscount(0.15);
-      setPromoMessage('15% Starcast exclusive discount applied!');
-    } else {
-      setPromoMessage('Invalid or expired promo code.');
-    }
-  };
-
-  const discountAmount = Math.round(subtotal * discount);
-  const finalTotal = Math.max(0, subtotal - discountAmount);
+  const deliveryFee = subtotal > 0 ? 150 : 0;
+  const finalTotal = subtotal + deliveryFee;
 
   const handleInitiateCheckout = (e) => {
     e.preventDefault();
@@ -120,78 +51,7 @@ const Cart = () => {
       return;
     }
 
-    setOrderError('');
-    setCheckoutModalOpen(true);
-  };
-
-  const handlePlaceOrder = async (e) => {
-    e.preventDefault();
-    setOrderError('');
-    setSubmitting(true);
-
-    try {
-      if (!shippingAddress.name.trim() || shippingAddress.name.trim().length < 2) {
-        throw new Error('Full name is required (at least 2 characters)');
-      }
-      const rawPhone = shippingAddress.phone.replace(/^(?:\+91|91|0)/, '').trim();
-      if (!/^[6-9]\d{9}$/.test(rawPhone)) {
-        throw new Error('Valid 10-digit Indian mobile number is required');
-      }
-      if (!shippingAddress.line1.trim() || shippingAddress.line1.trim().length < 5) {
-        throw new Error('Address Line 1 is required (at least 5 characters)');
-      }
-      if (!shippingAddress.city.trim() || !shippingAddress.state.trim()) {
-        throw new Error('City and State are required');
-      }
-      if (!/^[1-9][0-9]{5}$/.test(shippingAddress.pincode.trim())) {
-        throw new Error('Valid 6-digit Indian PIN code is required');
-      }
-
-      const cartItemsToOrder = serverCart?.items || [];
-      if (!cartItemsToOrder.length) {
-        throw new Error('Your server cart is empty. Please add items before placing an order.');
-      }
-
-      const orderItems = cartItemsToOrder.map((item) => ({
-        variantId: item.variant_id || item.variantId,
-        quantity: item.quantity,
-      }));
-
-      const key = getOrCreateIdempotencyKey();
-
-      const res = await apiFetch('/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Idempotency-Key': key,
-        },
-        body: JSON.stringify({
-          items: orderItems,
-          shippingAddress: {
-            name: shippingAddress.name.trim(),
-            phone: shippingAddress.phone.trim(),
-            line1: shippingAddress.line1.trim(),
-            line2: shippingAddress.line2?.trim() || null,
-            city: shippingAddress.city.trim(),
-            state: shippingAddress.state.trim(),
-            pincode: shippingAddress.pincode.trim(),
-          },
-        }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        const errorMsg = json.errors?.[0]?.message || json.message || 'Failed to place order';
-        throw new Error(errorMsg);
-      }
-
-      setOrderComplete(json.data.order);
-      setCheckoutModalOpen(false);
-    } catch (err) {
-      setOrderError(err.message || 'Order placement failed');
-    } finally {
-      setSubmitting(false);
-    }
+    window.location.href = '/checkout';
   };
 
   return (
@@ -431,16 +291,9 @@ const Cart = () => {
                       <span>{formatCurrency(subtotal)}</span>
                     </div>
 
-                    {discount > 0 && (
-                      <div className="cart-summary-row" style={{ color: 'var(--accent, #f24c27)' }}>
-                        <span>VIP Discount ({(discount * 100).toFixed(0)}%)</span>
-                        <span>−{formatCurrency(discountAmount)}</span>
-                      </div>
-                    )}
-
                     <div className="cart-summary-row">
-                      <span>Shipping</span>
-                      <span className="cart-free-badge">Complimentary</span>
+                      <span>Standard Delivery</span>
+                      <span>{deliveryFee > 0 ? formatCurrency(deliveryFee) : '₹0'}</span>
                     </div>
 
                     <div className="cart-summary-row">
@@ -455,25 +308,6 @@ const Cart = () => {
                       <span>{formatCurrency(finalTotal)}</span>
                     </div>
                   </div>
-
-                  {/* Promo Input */}
-                  <form onSubmit={handleApplyPromo} className="cart-promo-form">
-                    <input
-                      type="text"
-                      className="cart-promo-input"
-                      placeholder="Promo code (try EVO10)"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                    />
-                    <button type="submit" className="cart-promo-btn">
-                      Apply
-                    </button>
-                  </form>
-                  {promoMessage && (
-                    <div className={`cart-promo-msg ${discount > 0 ? 'is-success' : 'is-error'}`}>
-                      {promoMessage}
-                    </div>
-                  )}
 
                   {/* Checkout CTA */}
                   <MagneticButton
@@ -504,156 +338,13 @@ const Cart = () => {
           )}
         </main>
 
-        {/* ── Checkout & Shipping Modal ── */}
-        {checkoutModalOpen && (
-          <div className="auth-modal-overlay" onClick={() => setCheckoutModalOpen(false)}>
-            <div className="auth-modal-content ck-checkout-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="auth-modal-close" onClick={() => setCheckoutModalOpen(false)}>
-                ✕
-              </button>
-
-              <div className="auth-modal-header">
-                <span className="auth-modal-brand">Evoluir · Checkout</span>
-                <h2 className="auth-modal-title">Shipping & Order Review</h2>
-                <p className="auth-modal-sub">
-                  Confirm your delivery address. Items and prices are read directly from your server cart.
-                </p>
-              </div>
-
-              {orderError && <div className="auth-modal-error">{orderError}</div>}
-
-              {/* Server Cart Items */}
-              <div className="ck-order-summary-box">
-                <div className="ck-order-summary-title">Order Items (Database Source)</div>
-                {loadingCart ? (
-                  <div style={{ fontSize: '12px', color: '#a0a0a5', padding: '10px 0' }}>Syncing server bag...</div>
-                ) : (
-                  (serverCart?.items || []).map((item) => (
-                    <div key={item.item_id || item.variant_id} className="ck-review-item-row">
-                      <div>
-                        <div style={{ fontWeight: 500, fontSize: '13px' }}>{item.product_name}</div>
-                        <div style={{ fontSize: '11px', color: '#a0a0a5' }}>
-                          {item.shade_name ? `Shade: ${item.shade_name} · ` : ''}Qty: {item.quantity}
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 500, fontSize: '13px' }}>
-                        ₹{((item.line_total_paise || item.price_paise * item.quantity) / 100).toLocaleString('en-IN')}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div className="ck-review-total-row">
-                  <span>Estimated Delivery</span>
-                  <span style={{ color: '#42fcff', fontSize: '13px', fontWeight: 400 }}>4–6 Business Days (Complimentary)</span>
-                </div>
-                <div className="ck-review-total-row">
-                  <span>Total Amount</span>
-                  <span>₹{((serverCart?.total_paise || 0) / 100).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              <form onSubmit={handlePlaceOrder} className="auth-modal-form" style={{ marginTop: '20px' }}>
-                <div className="auth-input-group">
-                  <label>Recipient Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full recipient name"
-                    value={shippingAddress.name}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, name: e.target.value })}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="auth-input-group">
-                  <label>10-Digit Mobile Phone</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="e.g. 9876543210"
-                    value={shippingAddress.phone}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="auth-input-group">
-                  <label>Address Line 1</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="House/flat no, street, locality"
-                    value={shippingAddress.line1}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, line1: e.target.value })}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="auth-input-group">
-                  <label>Address Line 2 (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="Apartment, suite, landmark"
-                    value={shippingAddress.line2 || ''}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, line2: e.target.value })}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="ck-address-triplet">
-                  <div className="auth-input-group">
-                    <label>City</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="City"
-                      value={shippingAddress.city}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      disabled={submitting}
-                    />
-                  </div>
-                  <div className="auth-input-group">
-                    <label>State</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="State"
-                      value={shippingAddress.state}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      disabled={submitting}
-                    />
-                  </div>
-                  <div className="auth-input-group">
-                    <label>PIN Code</label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={6}
-                      placeholder="6 digits"
-                      value={shippingAddress.pincode}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, pincode: e.target.value })}
-                      disabled={submitting}
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="auth-submit-btn" disabled={submitting} style={{ marginTop: '16px' }}>
-                  {submitting
-                    ? 'Creating Order in PostgreSQL...'
-                    : `Confirm & Place Order · ₹${((serverCart?.total_paise || 0) / 100).toLocaleString('en-IN')}`}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
         {/* ── Auth Modal ── */}
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           onSuccess={() => {
             setAuthModalOpen(false);
-            setCheckoutModalOpen(true);
+            window.location.href = '/checkout';
           }}
         />
 
