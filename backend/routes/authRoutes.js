@@ -17,13 +17,25 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Refresh rate limiting to prevent token stuffing & session flooding
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  message: {
+    status: 'error',
+    message: 'Too many refresh attempts from this IP, please try again after 15 minutes',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Rate-limited endpoints
 router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
 router.post('/google', authLimiter, authController.googleAuth);
+router.post('/refresh', refreshLimiter, authController.refresh);
 
-// Non rate-limited endpoints
-router.post('/refresh', authController.refresh);
+// Session endpoints
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.getMe);
 

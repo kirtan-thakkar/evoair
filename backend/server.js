@@ -11,20 +11,28 @@ let server;
 const startServer = async () => {
   try {
     await connectDB();
-    server = app.listen(PORT, () => {
-      logger.info(`Server running in ${env.NODE_ENV} mode on port ${PORT}`);
-    });
   } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
+    logger.error({ err: error }, `PostgreSQL connection failed: ${error.message}`);
+    logger.warn(
+      'PostgreSQL is not reachable on localhost:5432. Start Docker Desktop and run `docker compose up -d` in backend/ (or start your local PostgreSQL service).'
+    );
+
+    if (env.NODE_ENV === 'production') {
+      logger.fatal('Database connection is required in production. Exiting.');
+      process.exit(1);
+    }
   }
+
+  server = app.listen(PORT, () => {
+    logger.info(`Server running in ${env.NODE_ENV} mode on port ${PORT}`);
+  });
 };
 
 startServer();
 
 const gracefulShutdown = async (signal) => {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
-  
+
   if (server) {
     server.close(async () => {
       logger.info('HTTP server closed.');
@@ -33,7 +41,7 @@ const gracefulShutdown = async (signal) => {
         logger.info('PostgreSQL connection pool closed.');
         process.exit(0);
       } catch (err) {
-        logger.error('Error closing PostgreSQL connection:', err);
+        logger.error({ err }, 'Error closing PostgreSQL connection:');
         process.exit(1);
       }
     });
