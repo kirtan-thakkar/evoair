@@ -208,17 +208,44 @@ export const AuthNavButton = ({ style = {} }) => {
   const { user, isAuthenticated, authReady, logout } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const dropdownRef = useRef(null);
 
+  const updatePlacement = useCallback(() => {
+    if (dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // If inside bottom navigation or less than 240px space below, open upward
+      const shouldOpenUp = spaceBelow < 240 || window.innerWidth <= 1024 || rect.top > window.innerHeight / 2;
+      setOpenUpward(shouldOpenUp);
+    }
+  }, []);
+
   useEffect(() => {
-    const handleOutsideClick = (e) => {
+    const handleOutsideInteraction = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setMenuOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('mousedown', handleOutsideInteraction);
+    document.addEventListener('touchstart', handleOutsideInteraction, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideInteraction);
+      document.removeEventListener('touchstart', handleOutsideInteraction);
+    };
   }, []);
+
+  useEffect(() => {
+    if (menuOpen) {
+      updatePlacement();
+      window.addEventListener('resize', updatePlacement);
+      window.addEventListener('scroll', updatePlacement, { passive: true });
+      return () => {
+        window.removeEventListener('resize', updatePlacement);
+        window.removeEventListener('scroll', updatePlacement);
+      };
+    }
+  }, [menuOpen, updatePlacement]);
 
   if (!authReady) return null;
 
@@ -256,6 +283,15 @@ export const AuthNavButton = ({ style = {} }) => {
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
   const firstName = user?.name ? user.name.split(' ')[0] : 'Account';
 
+  const toggleMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!menuOpen) {
+      updatePlacement();
+    }
+    setMenuOpen((prev) => !prev);
+  };
+
   return (
     <div
       ref={dropdownRef}
@@ -264,8 +300,11 @@ export const AuthNavButton = ({ style = {} }) => {
     >
       <button
         type="button"
-        onClick={() => setMenuOpen(!menuOpen)}
+        onClick={toggleMenu}
         className="auth-user-pill"
+        aria-expanded={menuOpen}
+        aria-haspopup="true"
+        aria-label="User account menu"
       >
         <span className="auth-user-avatar">{initial}</span>
         <span className="auth-user-name">{firstName}</span>
@@ -279,88 +318,72 @@ export const AuthNavButton = ({ style = {} }) => {
 
       {menuOpen && (
         <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            minWidth: '200px',
-            background: '#09090b',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            borderRadius: '14px',
-            padding: '14px',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(242, 76, 39, 0.1)',
-            zIndex: 9999
-          }}
+          className={`auth-user-dropdown-menu ${openUpward ? 'placement-up' : 'placement-down'}`}
+          onClick={(e) => e.stopPropagation()}
+          role="menu"
         >
-          <div
-            style={{
-              paddingBottom: '10px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              marginBottom: '8px'
-            }}
-          >
-            <div style={{ fontSize: '13px', fontWeight: 500, color: '#f5f5f7' }}>
-              {user?.name}
+          <div className="auth-dropdown-user-header">
+            <div className="auth-dropdown-user-name">
+              {user?.name || 'Customer'}
             </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: '#a0a0a5',
-                textOverflow: 'ellipsis',
-                overflow: 'hidden'
-              }}
-            >
-              {user?.email}
+            <div className="auth-dropdown-user-email">
+              {user?.email || ''}
             </div>
           </div>
+
           <a
             href={user?.id ? `/${user.id}/orders` : '/orders'}
             onClick={() => setMenuOpen(false)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              width: '100%',
-              padding: '8px 8px',
-              fontSize: '12px',
-              color: '#f5f5f7',
-              textDecoration: 'none',
-              borderRadius: '8px',
-              transition: 'background 0.2s',
-              marginBottom: '6px',
-              fontWeight: 500,
-              boxSizing: 'border-box'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="auth-dropdown-item auth-dropdown-orders-link"
+            role="menuitem"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-              <path d="M3 6h18" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-            My Orders
+            <span className="auth-dropdown-icon">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                <path d="M3 6h18" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+            </span>
+            <span className="auth-dropdown-label">My Orders</span>
+            <span className="auth-dropdown-arrow">→</span>
           </a>
+
           <button
             type="button"
-            onClick={async () => {
+            onClick={async (e) => {
+              e.stopPropagation();
               setMenuOpen(false);
               await logout();
             }}
-            style={{
-              width: '100%',
-              background: 'transparent',
-              border: 'none',
-              color: '#ff6b4a',
-              textAlign: 'left',
-              padding: '8px 4px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              borderRadius: '6px',
-              fontWeight: 500
-            }}
+            className="auth-dropdown-item auth-dropdown-signout-btn"
+            role="menuitem"
           >
-            Sign Out
+            <span className="auth-dropdown-icon">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </span>
+            <span className="auth-dropdown-label">Sign Out</span>
           </button>
         </div>
       )}

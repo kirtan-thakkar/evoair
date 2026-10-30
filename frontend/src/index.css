@@ -457,6 +457,174 @@ nav.hidden {
   font-size: 9px;
   transition: transform 0.2s;
 }
+
+/* ==========================================================================
+   Authenticated User Pill & Dropdown / Drop-up Menu
+   ========================================================================== */
+.auth-user-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.auth-user-dropdown-menu {
+  position: absolute;
+  right: 0;
+  min-width: 220px;
+  max-width: calc(100vw - 28px);
+  background: #09090b !important;
+  background: rgba(10, 10, 14, 0.96) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%) !important;
+  backdrop-filter: blur(30px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 16px !important;
+  padding: 14px !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.88), 0 0 24px rgba(66, 252, 255, 0.08) !important;
+  z-index: 99999 !important;
+  box-sizing: border-box !important;
+}
+
+.auth-user-dropdown-menu.placement-down {
+  top: calc(100% + 10px) !important;
+  bottom: auto !important;
+  transform-origin: top right;
+  animation: authDropdownFadeDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-user-dropdown-menu.placement-up {
+  bottom: calc(100% + 12px) !important;
+  top: auto !important;
+  transform-origin: bottom right;
+  animation: authDropdownFadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Force upward drop-up direction on tablets & mobile when navbar is docked to the bottom */
+@media (width <= 1024px) {
+  .luxury-nav .auth-user-dropdown-menu,
+  .ck-nav .auth-user-dropdown-menu,
+  nav:not(.checkout-nav):not(.orders-nav) .auth-user-dropdown-menu {
+    bottom: calc(100% + 12px) !important;
+    top: auto !important;
+    transform-origin: bottom right !important;
+    animation: authDropdownFadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+}
+
+@keyframes authDropdownFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes authDropdownFadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-dropdown-user-header {
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+.auth-dropdown-user-name {
+  font-family: Satoshi-Variable, Satoshi, sans-serif !important;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+}
+
+.auth-dropdown-user-email {
+  font-family: Satoshi-Variable, Satoshi, sans-serif !important;
+  font-size: 11.5px;
+  color: #a0a0a5;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: 3px;
+}
+
+.auth-dropdown-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  font-family: Satoshi-Variable, Satoshi, sans-serif !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent;
+  min-height: 40px !important;
+}
+
+.auth-dropdown-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.auth-dropdown-label {
+  flex: 1;
+  text-align: left;
+}
+
+.auth-dropdown-arrow {
+  font-size: 13px;
+  opacity: 0.5;
+  transition: transform 0.2s, opacity 0.2s, color 0.2s;
+}
+
+.auth-dropdown-orders-link {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin-bottom: 6px;
+}
+
+.auth-dropdown-orders-link:hover,
+.auth-dropdown-orders-link:active {
+  background: rgba(66, 252, 255, 0.12) !important;
+  border-color: rgba(66, 252, 255, 0.3) !important;
+  color: #42fcff !important;
+}
+
+.auth-dropdown-orders-link:hover .auth-dropdown-arrow,
+.auth-dropdown-orders-link:active .auth-dropdown-arrow {
+  opacity: 1;
+  color: #42fcff;
+  transform: translateX(2px);
+}
+
+.auth-dropdown-signout-btn {
+  color: #ff7070 !important;
+  padding: 8px 12px !important;
+}
+
+.auth-dropdown-signout-btn:hover,
+.auth-dropdown-signout-btn:active {
+  background: rgba(255, 112, 112, 0.1) !important;
+  color: #ff8c8c !important;
+}
 section {
   z-index: 10;
   justify-content: center;
