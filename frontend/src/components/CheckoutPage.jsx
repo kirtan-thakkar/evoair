@@ -215,9 +215,11 @@ const CheckoutPage = () => {
         {/* ── Top Navigation Bar ── */}
         <nav className="checkout-nav">
           <div className="checkout-nav-left">
-            <a href="/cart" className="checkout-back-link">
-              ← Return to Cart
-            </a>
+            {!orderComplete && (
+              <a href="/cart" className="checkout-back-link">
+                ← Return to Cart
+              </a>
+            )}
             <a href="/" className="checkout-nav-logo">
               <img src={newLogo} alt="Evoluir" />
               <span className="checkout-nav-wordmark">Evoluir</span>

@@ -109,9 +109,6 @@ const OrdersPage = () => {
         {/* ── Top Navigation Bar ── */}
         <nav className="orders-nav">
           <div className="orders-nav-left">
-            <a href="/cart" className="orders-back-link">
-              ← Return to Cart
-            </a>
             <a href="/" className="orders-nav-logo">
               <img src={newLogo} alt="Evoluir" />
               <span className="orders-nav-wordmark">Evoluir</span>
