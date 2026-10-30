@@ -24,43 +24,28 @@ const __dirname = path.dirname(__filename);
 const frontendDist = path.join(__dirname, '../frontend/dist');
 
 const app = express();
+app.disable('x-powered-by');
 
 // Trust proxy for reverse proxies / AWS ALB (when hops > 0)
 if (env.TRUST_PROXY_HOPS > 0) {
   app.set('trust proxy', env.TRUST_PROXY_HOPS);
 }
 
-// 1. Security Headers (configured to allow 3D models, WASM, and web fonts)
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-  })
-);
-
-// 2. CORS (Allows development localhost ports 5173, 5174, etc., with credentials)
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-      if (env.NODE_ENV !== 'production' && isLocalhost) {
-        return callback(null, true);
-      }
-      if (env.CORS_ORIGIN && origin === env.CORS_ORIGIN) {
-        return callback(null, true);
-      }
-      return callback(null, env.NODE_ENV !== 'production');
-    },
-    credentials: true,
-  })
-);
-
-// 3. Request Logging & Tracing with sensitive header redaction
+// 1. Request Logging & Tracing with clean serializers (omits noisy header dumps in console)
 app.use(
   pinoHttp({
     logger,
     genReqId: () => crypto.randomUUID(),
+    serializers: {
+      req: (req) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+      }),
+    },
     redact: {
       paths: [
         'req.headers.authorization',
@@ -78,7 +63,53 @@ app.use(
   })
 );
 
-// 4. Global IP Rate Limiter across all routes and pages (Anti-scraping & DDoS protection)
+// 2. Health check endpoint (PostgreSQL ping)
+// Placed before helmet & rate-limiter so it returns a clean, minimal header response without header clutter
+app.get('/health', async (req, res) => {
+  try {
+    await checkDbHealth();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.status(200).json({ status: 'OK', message: 'Healthy', db: 'Connected' });
+  } catch (error) {
+    logger.error('Health check failed: DB not responding');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.status(503).json({ status: 'ERROR', message: 'Service Unavailable', db: 'Disconnected' });
+  }
+});
+app.options('/health', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.sendStatus(204);
+});
+
+// 3. Security Headers (configured to allow 3D models, WASM, and web fonts)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// 4. CORS (Allows development localhost ports 5173, 5174, etc., with credentials)
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      if (env.NODE_ENV !== 'production' && isLocalhost) {
+        return callback(null, true);
+      }
+      if (env.CORS_ORIGIN && origin === env.CORS_ORIGIN) {
+        return callback(null, true);
+      }
+      return callback(null, env.NODE_ENV !== 'production');
+    },
+    credentials: true,
+  })
+);
+
+// 5. Global IP Rate Limiter across all routes and pages (Anti-scraping & DDoS protection)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: env.NODE_ENV === 'production' ? 200 : 50000, // Generous in dev (50,000) to prevent false offline lockouts
@@ -91,13 +122,13 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// 5. Body Parsing with strict limits (DoS protection) & Cookie Parser
+// 6. Body Parsing with strict limits (DoS protection) & Cookie Parser
 // Note: Webhook raw parsing (Phase 6) will be inserted BEFORE this in the future
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
-// 6. Response Compression
+// 7. Response Compression
 app.use(compression());
 
 // Prevent browser and proxy caching on all API routes so data is always fresh from backend
@@ -109,18 +140,7 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// --- ROUTES ---
-
-// Health check endpoint (PostgreSQL ping)
-app.get('/health', async (req, res) => {
-  try {
-    await checkDbHealth();
-    res.status(200).json({ status: 'OK', message: 'Healthy', db: 'Connected' });
-  } catch (error) {
-    logger.error('Health check failed: DB not responding');
-    res.status(503).json({ status: 'ERROR', message: 'Service Unavailable', db: 'Disconnected' });
-  }
-});
+// --- API ROUTES ---
 
 // API Versioning
 app.use('/api/v1/auth', authRoutes);
