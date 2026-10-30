@@ -1,6 +1,36 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { eq, ne, sql, desc } from 'drizzle-orm';
 import { db } from '../config/db.js';
 import { orders, orderItems, productVariants, products, users } from '../db/schema.js';
+import { logger } from '../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logDir = path.join(__dirname, '../logs');
+const logFile = path.join(logDir, 'user-activity.log');
+
+/**
+ * Appends user journey, drop-off, and debugging logs to local log storage
+ */
+export const recordUserActivity = async (entry) => {
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    const line = JSON.stringify(entry) + '\n';
+    await fs.promises.appendFile(logFile, line, 'utf8');
+
+    if (entry.event === 'error' || entry.event === 'unhandled_rejection') {
+      logger.warn({ userActivity: entry }, `[Telemetry Error] ${entry.event} on ${entry.path}`);
+    } else {
+      logger.info({ userActivity: entry }, `[Telemetry] ${entry.event} on ${entry.path}`);
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to record user activity log');
+  }
+};
 
 /**
  * Generates comprehensive store analytics and KPI metrics

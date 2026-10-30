@@ -1,6 +1,7 @@
 // frontend/src/utils/cart.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api';
+import { logUserAction } from './activityLogger';
 
 const PRIMARY_CART_KEY = 'evoair_cart';
 const LEGACY_CART_KEY = 'evoluir_cart';
@@ -122,6 +123,7 @@ export const addToCart = (newItem) => {
   }
 
   saveCart(updated);
+  logUserAction('cart_add', { variantId: vId, name: newItem.name, quantity: newItem.quantity || 1 });
   return updated;
 };
 
@@ -139,6 +141,7 @@ export const updateQuantity = (uniqueKey, delta) => {
     .filter(Boolean);
 
   saveCart(updated);
+  logUserAction('cart_update_qty', { uniqueKey, delta });
   return updated;
 };
 
@@ -149,6 +152,7 @@ export const removeFromCart = (uniqueKey) => {
     return key !== uniqueKey && item.variantId !== uniqueKey && item.id !== uniqueKey;
   });
   saveCart(updated);
+  logUserAction('cart_remove', { uniqueKey });
   return updated;
 };
 
@@ -157,6 +161,7 @@ export const clearCart = (isAuthenticated = false) => {
   if (isAuthenticated) {
     api.delete('/api/v1/cart').catch(() => {});
   }
+  logUserAction('cart_clear');
   window.dispatchEvent(new Event(CART_EVENT));
 };
 

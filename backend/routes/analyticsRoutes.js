@@ -5,9 +5,10 @@ import * as analyticsController from '../controllers/analyticsController.js';
 
 const router = express.Router();
 
-router.use(authenticate, requireAdmin);
+// Public telemetry and user activity logging endpoint (beacon & fetch)
+router.post('/events', analyticsController.logUserActivity);
 
-// GET /api/v1/analytics/overview
-router.get('/overview', analyticsController.getOverview);
+// Protected Admin Overview
+router.get('/overview', authenticate, requireAdmin, analyticsController.getOverview);
 
 export default router;

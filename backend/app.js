@@ -124,7 +124,8 @@ app.use(globalLimiter);
 
 // 6. Body Parsing with strict limits (DoS protection) & Cookie Parser
 // Note: Webhook raw parsing (Phase 6) will be inserted BEFORE this in the future
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '20kb' }));
+app.use(express.text({ type: ['text/plain', 'application/json'], limit: '20kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 

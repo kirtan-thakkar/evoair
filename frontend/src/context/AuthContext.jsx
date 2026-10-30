@@ -1,6 +1,7 @@
 // frontend/src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, setAccessToken, requestTokenRefresh, setOnAuthFailure } from '../utils/api';
+import { initActivityLogger, logUserAction } from '../utils/activityLogger';
 
 const AuthContext = createContext(null);
 
@@ -9,6 +10,11 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setLocalAccessToken] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Initialize automated telemetry & exit logger once per application session
+  useEffect(() => {
+    initActivityLogger();
+  }, []);
 
   // Sync token into api.js module and local React state
   const handleTokenUpdate = useCallback((token, userProfile = null) => {

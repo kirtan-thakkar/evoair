@@ -3,9 +3,10 @@ import Layout from './Layout';
 import MagneticButton from './MagneticButton';
 import newLogo from '../assets/new-logo.png';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../utils/cart';
+import { useCart, clearCart } from '../utils/cart';
 import { apiFetch } from '../utils/api';
 import { AuthNavButton, AuthModal } from './AuthModal';
+import { logUserAction } from '../utils/activityLogger';
 import './CheckoutPage.css';
 
 const formatCurrency = (val) => {
@@ -177,6 +178,11 @@ const CheckoutPage = () => {
       }
 
       setOrderComplete(json.data.order);
+      logUserAction('order_placed', {
+        orderId: json.data?.order?.id,
+        orderNumber: json.data?.order?.order_number,
+        totalRupees: Math.round((json.data?.order?.total_paise || 0) / 100),
+      });
       if (typeof clearCart === 'function') {
         clearCart();
       }
