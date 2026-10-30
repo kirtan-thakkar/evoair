@@ -507,6 +507,32 @@ nav.hidden {
     transform-origin: bottom right !important;
     animation: authDropdownFadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
+
+  /* Section 3 (Craftsmanship) Responsive Tablet Centering */
+  #craftsmanship {
+    padding: 64px 24px 56px !important;
+    overflow: hidden;
+  }
+  .craft-grid {
+    grid-template-columns: 1fr !important;
+    gap: 36px !important;
+    text-align: center !important;
+  }
+  .craft-headline {
+    text-align: center !important;
+    margin: 0 auto !important;
+    font-size: clamp(52px, 8.5vw, 84px) !important;
+    max-width: 680px !important;
+  }
+  .craft-details {
+    height: 360px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    position: relative !important;
+  }
 }
 
 @keyframes authDropdownFadeUp {
@@ -715,12 +741,15 @@ section {
   border-top: 1px solid var(--border-glass);
   padding-top: clamp(60px, 8vh, 100px);
   padding-bottom: clamp(60px, 8vh, 100px);
+  overflow: hidden;
 }
 .craft-grid {
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
   align-items: center;
   gap: 48px;
   display: grid;
+  max-width: 1240px;
+  margin: 0 auto;
 }
 .craft-headline {
   color: var(--text-primary);
@@ -749,9 +778,10 @@ section {
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 380px;
+  height: 400px;
   display: flex;
   position: relative;
+  overflow: visible;
 }
 .craft-item-card {
   box-sizing: border-box;
@@ -1266,19 +1296,22 @@ footer {
   }
   .craft-grid {
     grid-template-columns: 1fr;
-    gap: 32px;
+    gap: 36px;
+    text-align: center;
   }
   .craft-details {
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 300px;
+    height: 360px;
     margin-top: 8px;
     display: flex;
     overflow: visible;
   }
   .craft-headline {
-    font-size: clamp(42px, 10vw, 72px);
+    text-align: center;
+    margin: 0 auto;
+    font-size: clamp(48px, 9vw, 76px);
   }
   .tech-header {
     flex-direction: column;
@@ -1660,14 +1693,16 @@ footer {
     font-size: 9px;
   }
   .craft-headline {
-    font-size: clamp(36px, 11vw, 60px);
+    text-align: center;
+    margin: 0 auto;
+    font-size: clamp(42px, 11vw, 64px);
   }
   .craft-details {
-    height: 280px;
+    height: 320px;
   }
   .craft-item-card {
     border-radius: 14px;
-    padding: 22px 24px;
+    padding: 20px 22px;
   }
   .craft-item-card .craft-item-label {
     letter-spacing: 0.2em;
@@ -1676,7 +1711,7 @@ footer {
   }
   .craft-item-card .craft-item-text {
     margin-bottom: 12px;
-    font-size: 16px;
+    font-size: 15.5px;
     line-height: 1.35;
   }
   .craft-item-card .craft-item-accent {
@@ -1779,10 +1814,12 @@ footer {
     line-height: 1.08;
   }
   .craft-headline {
-    font-size: clamp(32px, 10vw, 48px);
+    text-align: center;
+    margin: 0 auto;
+    font-size: clamp(34px, 10vw, 50px);
   }
   .craft-details {
-    height: 250px;
+    height: 290px;
   }
   .craft-item-card {
     padding: 16px 18px;
@@ -4402,6 +4439,9 @@ footer {
   margin: 0 auto;
   position: relative;
   overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .card {
   transform-style: preserve-3d;
@@ -4415,10 +4455,11 @@ footer {
   top: 50%;
   left: 50%;
 }
-@media (width<=768px) {
+@media (max-width: 1024px) {
   .card-swap-container {
     transform: none !important;
     margin: 0 auto !important;
+    position: relative !important;
   }
 }
 
@@ -4504,47 +4545,51 @@ footer {
 
   /* Craftsmanship Section (#craftsmanship) */
   #craftsmanship {
-    padding: 48px 20px 40px !important;
+    padding: 56px 20px 48px !important;
     min-height: auto !important;
   }
   .craft-grid {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    gap: 28px !important;
     text-align: center !important;
   }
   .craft-headline {
     text-align: center !important;
     margin: 0 auto !important;
-    font-size: clamp(38px, 11vw, 56px) !important;
+    font-size: clamp(48px, 11vw, 72px) !important;
+    max-width: 600px !important;
   }
   .craft-details {
-    height: 240px !important;
+    height: 330px !important;
     margin-top: 8px !important;
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   .card-swap-container {
     margin: 0 auto !important;
     transform: none !important;
+    position: relative !important;
   }
   .card {
     border-radius: 14px !important;
   }
   .craft-item-card {
-    padding: 18px 20px !important;
+    padding: 20px 22px !important;
   }
   .craft-item-card .craft-item-label {
-    font-size: 10px !important;
+    font-size: 10.5px !important;
     margin-bottom: 6px !important;
   }
   .craft-item-card .craft-item-text {
-    font-size: 14px !important;
+    font-size: 15.5px !important;
     margin-bottom: 8px !important;
   }
   .craft-item-card .craft-item-accent {
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   /* Technology Section (#technology) */

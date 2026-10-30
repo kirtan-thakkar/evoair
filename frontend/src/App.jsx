@@ -160,6 +160,7 @@ const MainApp = () => {
     return !(played || (hash && hash !== '#hero' && hash !== '#home'));
   });
   const [percent, setPercent] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 768 : false));
   const [hasRevealPlayed, setHasRevealPlayed] = useState(() => {
     if (typeof window === 'undefined' || resolveCurrentRoute() !== 'home') return true;
@@ -173,10 +174,53 @@ const MainApp = () => {
 
   // Resize listener for mobile/desktop layout adaptation
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      const w = window.innerWidth;
+      setViewportWidth(w);
+      setIsMobile(w <= 768);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const cardConfig = useMemo(() => {
+    if (viewportWidth <= 480) {
+      const cardW = Math.max(260, Math.min(viewportWidth - 36, 320));
+      return {
+        width: cardW,
+        height: 200,
+        cardDistance: 14,
+        verticalDistance: 18,
+        skewAmount: 1.5
+      };
+    } else if (viewportWidth <= 640) {
+      const cardW = Math.max(290, Math.min(viewportWidth - 48, 350));
+      return {
+        width: cardW,
+        height: 215,
+        cardDistance: 18,
+        verticalDistance: 22,
+        skewAmount: 2
+      };
+    } else if (viewportWidth <= 1024) {
+      const cardW = Math.max(340, Math.min(viewportWidth - 80, 420));
+      return {
+        width: cardW,
+        height: 250,
+        cardDistance: 24,
+        verticalDistance: 28,
+        skewAmount: 2.5
+      };
+    } else {
+      return {
+        width: 440,
+        height: 275,
+        cardDistance: 32,
+        verticalDistance: 38,
+        skewAmount: 3.5
+      };
+    }
+  }, [viewportWidth]);
 
   // 1. Loading screen progress simulation
   useEffect(() => {
@@ -580,13 +624,13 @@ const MainApp = () => {
               </div>
               <div className="craft-details">
                 <CardSwap
-                  cardDistance={isMobile ? 18 : 35}
-                  verticalDistance={isMobile ? 24 : 45}
+                  cardDistance={cardConfig.cardDistance}
+                  verticalDistance={cardConfig.verticalDistance}
                   delay={4000}
                   pauseOnHover={true}
-                  skewAmount={isMobile ? 2 : 4}
-                  width={isMobile ? Math.min(window.innerWidth - 60, 310) : 420}
-                  height={isMobile ? 210 : 280}
+                  skewAmount={cardConfig.skewAmount}
+                  width={cardConfig.width}
+                  height={cardConfig.height}
                 >
                   <Card customClass="craft-item-card">
                     <div className="craft-item-label">Air pressure system</div>
