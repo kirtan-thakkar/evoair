@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 
 import { resolve } from 'path'
 
+const backendTarget = process.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -30,26 +32,29 @@ export default defineConfig({
     },
   ],
   server: {
+    host: '0.0.0.0',
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: backendTarget,
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:5000',
+        target: backendTarget,
         changeOrigin: true,
       },
     },
   },
   preview: {
     port: 4173,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: backendTarget,
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:5000',
+        target: backendTarget,
         changeOrigin: true,
       },
     },

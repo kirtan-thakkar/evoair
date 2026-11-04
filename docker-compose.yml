@@ -1,0 +1,77 @@
+name: evoair
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: evoair_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ecom_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - evoair_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ecom_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: evoair_backend
+    environment:
+      PORT: 5000
+      NODE_ENV: development
+      DATABASE_URL: postgres://admin:password123@postgres:5432/ecom_db
+      JWT_SECRET: super_secret_jwt_key_that_is_at_least_32_chars_long
+      JWT_REFRESH_SECRET: super_secret_refresh_key_that_is_at_least_32_chars_long
+      CORS_ORIGIN: http://localhost:5173
+      REDIS_ENABLED: 0
+      OWNER_EMAIL: kirtanthakkar30@gmail.com
+      ADMIN_EMAILS: kirtanthakkar30@gmail.com
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - evoair_net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: evoair_frontend
+    environment:
+      VITE_BACKEND_URL: http://backend:5000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - evoair_net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    external: true
+    name: backend_postgres_data
+
+networks:
+  evoair_net:
+    name: evoair_net
+    driver: bridge
