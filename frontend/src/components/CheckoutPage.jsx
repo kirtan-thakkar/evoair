@@ -308,7 +308,7 @@ const CheckoutPage = () => {
                 <span className="checkout-sub-label">Evoluir · Secure Checkout</span>
                 <h1 className="checkout-title">Shipping & Order Review</h1>
                 <p className="checkout-desc">
-                  Confirm your delivery destination. Items and pricing are verified directly against our live catalog and database.
+                  Confirm your delivery destination and review your selection before dispatch.
                 </p>
               </div>
 
@@ -465,9 +465,9 @@ const CheckoutPage = () => {
                       disabled={submitting || isBackendOffline || (!displayItems.length && !loadingCart)}
                     >
                       {submitting
-                        ? 'Creating Order in Database...'
+                        ? 'Placing Order...'
                         : isBackendOffline
-                        ? 'Waiting for Server Connection…'
+                        ? 'Backend is currently down'
                         : `Place Order & Confirm · ₹${totalAmountRupees.toLocaleString('en-IN')}`}
                     </button>
                   </form>

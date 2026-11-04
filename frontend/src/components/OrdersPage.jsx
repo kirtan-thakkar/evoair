@@ -152,7 +152,7 @@ const OrdersPage = () => {
             <span className="orders-sub-label">Evoluir · Customer Account</span>
             <h1 className="orders-title">Your Orders</h1>
             <p className="orders-desc">
-              Track live package dispatch, expected delivery windows, and full transaction history recorded in PostgreSQL.
+              Track live package dispatch, expected delivery windows, and your complete purchase history.
             </p>
           </div>
 

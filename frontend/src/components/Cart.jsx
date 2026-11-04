@@ -86,7 +86,7 @@ const Cart = () => {
             <h1 className="cart-title">Your Cart</h1>
             <p className="cart-item-count-sub">
               {loadingCart
-                ? 'Connecting to database...'
+                ? 'Loading your bag...'
                 : totalCount === 0
                 ? 'Your bag is currently empty'
                 : `${totalCount} item${totalCount === 1 ? '' : 's'} ready for checkout`}
@@ -140,7 +140,7 @@ const Cart = () => {
                 </span>
               </div>
               <p style={{ fontSize: '13px', color: '#a0a0a5', maxWidth: '440px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
-                Items are securely reserved in your database. Razorpay payment integration will be activated in the next phase.
+                Your order has been confirmed. You will receive an email confirmation with complete tracking details shortly.
               </p>
               <MagneticButton href="/products" className="btn-primary" style={{ marginTop: '12px' }}>
                 Explore Products
