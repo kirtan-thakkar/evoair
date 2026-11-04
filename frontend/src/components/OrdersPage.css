@@ -530,3 +530,137 @@
   animation: luxuryShimmer 1.6s ease infinite;
   margin-bottom: 14px;
 }
+
+/* ── 4-Step Order Progress Stepper ── */
+.order-stepper-wrap {
+  margin: 18px 0 24px;
+  background: #0d0d12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+.order-stepper-track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+}
+
+.order-stepper-bar-bg {
+  position: absolute;
+  top: 14px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+.order-stepper-bar-fill {
+  position: absolute;
+  top: 14px;
+  left: 30px;
+  height: 3px;
+  background: linear-gradient(90deg, #42fcff, #00e5ff);
+  z-index: 2;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 12px rgba(66, 252, 255, 0.5);
+}
+
+.order-stepper-step {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  flex: 1;
+}
+
+.order-stepper-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #181820;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8e8e93;
+  transition: all 0.3s ease;
+}
+
+.order-stepper-step.is-active .order-stepper-dot {
+  background: #050508;
+  border-color: #42fcff;
+  color: #42fcff;
+  box-shadow: 0 0 14px rgba(66, 252, 255, 0.6);
+}
+
+.order-stepper-step.is-completed .order-stepper-dot {
+  background: #42fcff;
+  border-color: #42fcff;
+  color: #000000;
+}
+
+.order-stepper-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #71717a;
+  letter-spacing: 0.02em;
+}
+
+.order-stepper-step.is-active .order-stepper-text {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.order-stepper-step.is-completed .order-stepper-text {
+  color: #a1a1a6;
+}
+
+.admin-portal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(66, 252, 255, 0.1);
+  border: 1px solid rgba(66, 252, 255, 0.3);
+  color: #42fcff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 20px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.admin-portal-pill:hover {
+  background: #42fcff;
+  color: #000000;
+}
+
+@media (max-width: 640px) {
+  .order-stepper-wrap {
+    padding: 16px 10px;
+  }
+  .order-stepper-text {
+    font-size: 9.5px;
+  }
+  .order-stepper-dot {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+  .order-stepper-bar-bg,
+  .order-stepper-bar-fill {
+    top: 11px;
+    left: 20px;
+    right: 20px;
+  }
+}

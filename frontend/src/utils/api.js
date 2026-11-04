@@ -110,6 +110,12 @@ export const api = {
       method: 'PUT',
       body: body instanceof FormData ? body : JSON.stringify(body),
     }),
+  patch: (endpoint, body, options) =>
+    apiFetch(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
   delete: (endpoint, options) => apiFetch(endpoint, { ...options, method: 'DELETE' }),
 };
 

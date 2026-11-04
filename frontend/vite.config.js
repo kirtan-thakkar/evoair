@@ -25,6 +25,8 @@ export default defineConfig({
             req.url?.match(/^\/[^/]+\/orders(\?.*)?$/)
           ) {
             req.url = '/orders.html';
+          } else if (req.url === '/admin' || req.url?.startsWith('/admin?')) {
+            req.url = '/admin.html';
           }
           next();
         });
@@ -68,6 +70,7 @@ export default defineConfig({
         cart: resolve(__dirname, 'cart.html'),
         checkout: resolve(__dirname, 'checkout.html'),
         orders: resolve(__dirname, 'orders.html'),
+        admin: resolve(__dirname, 'admin.html'),
       },
     },
   },

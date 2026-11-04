@@ -20,7 +20,9 @@ export const roleEnum = pgEnum('role', ['customer', 'admin']);
 export const orderStatusEnum = pgEnum('order_status', [
   'pending_payment',
   'paid',
+  'processing',
   'shipped',
+  'in_transit',
   'delivered',
   'cancelled',
 ]);

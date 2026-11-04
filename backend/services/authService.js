@@ -11,6 +11,12 @@ import { uuidSchema } from '../validators/commonValidators.js';
 // Precomputed valid bcrypt hash with 10 salt rounds to defend against timing attacks
 const DUMMY_HASH = bcrypt.hashSync('dummy_timing_protection_hash', 10);
 
+const isAdminEmail = (email) => {
+  if (!email || !env.ADMIN_EMAILS) return false;
+  const adminList = env.ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase());
+  return adminList.includes(email.toLowerCase());
+};
+
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
     { sub: String(user.id), role: user.role },
@@ -42,6 +48,7 @@ const generateTokens = (user) => {
 export const registerUser = async ({ name, email, phone, password }) => {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
+  const role = isAdminEmail(email) ? 'admin' : 'customer';
 
   try {
     const [newUser] = await db
@@ -51,7 +58,7 @@ export const registerUser = async ({ name, email, phone, password }) => {
         email: email.toLowerCase(),
         phone,
         password_hash: passwordHash,
-        role: 'customer',
+        role,
       })
       .returning({
         id: users.id,
@@ -99,6 +106,12 @@ export const loginUser = async ({ email, password }) => {
   const isMatch = await bcrypt.compare(password, user.password_hash);
   if (!isMatch) {
     throw new UnauthorizedError('Invalid email or password');
+  }
+
+  // Ensure role synchronization for configured admin emails
+  if (isAdminEmail(user.email) && user.role !== 'admin') {
+    await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
+    user.role = 'admin';
   }
 
   return generateTokens(user);
@@ -149,17 +162,19 @@ export const googleLogin = async (idToken) => {
     .where(eq(users.email, normalizedEmail))
     .limit(1);
 
+  const shouldBeAdmin = isAdminEmail(normalizedEmail);
+
   if (user) {
-    if (!user.google_id || !user.avatar_url) {
-      await db
-        .update(users)
-        .set({
-          google_id: user.google_id || googleId,
-          avatar_url: user.avatar_url || picture,
-        })
-        .where(eq(users.id, user.id));
-      user.google_id = user.google_id || googleId;
-      user.avatar_url = user.avatar_url || picture;
+    const updates = {};
+    if (!user.google_id && googleId) updates.google_id = googleId;
+    if (!user.avatar_url && picture) updates.avatar_url = picture;
+    if (shouldBeAdmin && user.role !== 'admin') updates.role = 'admin';
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(users).set(updates).where(eq(users.id, user.id));
+      if (updates.google_id) user.google_id = updates.google_id;
+      if (updates.avatar_url) user.avatar_url = updates.avatar_url;
+      if (updates.role) user.role = updates.role;
     }
   } else {
     const [newUser] = await db
@@ -169,7 +184,7 @@ export const googleLogin = async (idToken) => {
         name: name || 'Customer',
         google_id: googleId,
         avatar_url: picture,
-        role: 'customer',
+        role: shouldBeAdmin ? 'admin' : 'customer',
         password_hash: null,
       })
       .returning({

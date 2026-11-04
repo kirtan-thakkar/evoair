@@ -19,6 +19,14 @@ const envSchema = z
     REDIS_URL: z.string().default('redis://localhost:6379'),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
+    OWNER_EMAIL: z.string().email().default('kirtanthakkar30@gmail.com'),
+    ADMIN_EMAILS: z.string().default('kirtanthakkar30@gmail.com'),
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.coerce.number().default(587),
+    SMTP_SECURE: z.coerce.boolean().default(false),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_FROM: z.string().default('"Evoluir Concierge" <orders@evoluir.luxury>'),
   })
   .refine((data) => data.JWT_SECRET !== data.JWT_REFRESH_SECRET, {
     message: 'JWT_SECRET and JWT_REFRESH_SECRET must be distinct',

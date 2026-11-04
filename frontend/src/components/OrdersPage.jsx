@@ -17,20 +17,35 @@ const formatCurrency = (val) => {
 
 const getStatusBadge = (status) => {
   switch (status?.toLowerCase()) {
-    case 'paid':
-    case 'confirmed':
-      return { label: 'Order Confirmed', className: 'is-processing' };
-    case 'processing':
-    case 'preparing':
-      return { label: 'Preparing Order', className: 'is-processing' };
-    case 'shipped':
-    case 'in_transit':
-      return { label: 'Dispatched', className: 'is-processing' };
     case 'delivered':
       return { label: 'Delivered', className: 'is-delivered' };
+    case 'shipped':
+    case 'in_transit':
+      return { label: 'In Transit', className: 'is-processing' };
+    case 'processing':
+    case 'paid':
+    case 'confirmed':
+      return { label: 'Preparing Order', className: 'is-processing' };
     case 'pending_payment':
     default:
       return { label: 'Order Placed', className: 'is-pending' };
+  }
+};
+
+const getStepperStage = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'delivered':
+      return 4;
+    case 'in_transit':
+    case 'shipped':
+      return 3;
+    case 'processing':
+    case 'paid':
+    case 'confirmed':
+      return 2;
+    case 'pending_payment':
+    default:
+      return 1;
   }
 };
 
@@ -115,6 +130,11 @@ const OrdersPage = () => {
             </a>
           </div>
           <div className="orders-nav-right">
+            {user?.role === 'admin' && (
+              <a href="/admin" className="admin-portal-pill">
+                Admin Console &rarr;
+              </a>
+            )}
             <MagneticButton
               href="/products"
               className="btn-secondary"
@@ -230,6 +250,40 @@ const OrdersPage = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* ── 4-Step Live Delivery Progress Stepper ── */}
+                    {(() => {
+                      const stage = getStepperStage(order.status);
+                      const fillWidth = stage === 4 ? '100%' : stage === 3 ? '66%' : stage === 2 ? '33%' : '0%';
+                      return (
+                        <div className="order-stepper-wrap">
+                          <div className="order-stepper-track">
+                            <div className="order-stepper-bar-bg" />
+                            <div className="order-stepper-bar-fill" style={{ width: fillWidth }} />
+
+                            <div className={`order-stepper-step ${stage >= 1 ? (stage === 1 ? 'is-active' : 'is-completed') : ''}`}>
+                              <div className="order-stepper-dot">{stage > 1 ? '✓' : '1'}</div>
+                              <span className="order-stepper-text">Order Placed</span>
+                            </div>
+
+                            <div className={`order-stepper-step ${stage >= 2 ? (stage === 2 ? 'is-active' : 'is-completed') : ''}`}>
+                              <div className="order-stepper-dot">{stage > 2 ? '✓' : '2'}</div>
+                              <span className="order-stepper-text">Preparing</span>
+                            </div>
+
+                            <div className={`order-stepper-step ${stage >= 3 ? (stage === 3 ? 'is-active' : 'is-completed') : ''}`}>
+                              <div className="order-stepper-dot">{stage > 3 ? '✓' : '3'}</div>
+                              <span className="order-stepper-text">In Transit</span>
+                            </div>
+
+                            <div className={`order-stepper-step ${stage === 4 ? 'is-active is-completed' : ''}`}>
+                              <div className="order-stepper-dot">{stage === 4 ? '✓' : '4'}</div>
+                              <span className="order-stepper-text">Delivered</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* ── Prominent Expected Delivery Date Banner ── */}
                     <div className="order-delivery-banner">

@@ -1,7 +1,9 @@
-import { eq, and, desc, asc, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, sql, or, ilike } from 'drizzle-orm';
 import { db } from '../config/db.js';
-import { orders, orderItems, productVariants, products, carts, cartItems } from '../db/schema.js';
+import { orders, orderItems, productVariants, products, carts, cartItems, users } from '../db/schema.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
+import * as emailService from './emailService.js';
 
 // Flat delivery fee (configurable via SHIPPING_FEE_PAISE, default ₹150)
 const SHIPPING_FLAT_PAISE = Number(process.env.SHIPPING_FEE_PAISE ?? 15000);
@@ -186,14 +188,14 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
       // 7. Calculate dynamic expected delivery date (Mentor Directive 2)
       const expected_delivery_date = calculateExpectedDeliveryDate();
 
-      // 8. Insert order with unique order_number
+      // 8. Insert order with unique order_number and initial 'processing' status
       const order_number = await generateUniqueOrderNumber(tx);
       const [insertedOrder] = await tx
         .insert(orders)
         .values({
           user_id: userId,
           order_number,
-          status: 'pending_payment',
+          status: 'processing',
           subtotal_paise,
           shipping_paise,
           total_paise,
@@ -273,6 +275,24 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
         isExisting: false,
       };
     });
+
+    // Payment Fulfillment Promise: Trigger asynchronous email notifications upon successful order creation
+    if (!result.isExisting && result.order?.id) {
+      Promise.resolve(result.order.id)
+        .then(async (orderId) => {
+          logger.info(
+            { orderId, orderNumber: result.order.order_number },
+            '[PAYMENT_PROMISE] Payment successful, resolving fulfillment promise and dispatching notifications'
+          );
+          await emailService.sendOrderConfirmationEmails(orderId);
+        })
+        .catch((err) => {
+          logger.error(
+            { err: err.message, orderId: result.order.id },
+            '[PAYMENT_PROMISE] Error executing fulfillment promise handler'
+          );
+        });
+    }
 
     return result;
   } catch (err) {
@@ -401,5 +421,281 @@ export const getUserOrderById = async (userId, orderId) => {
   return {
     ...order,
     items,
+  };
+};
+
+/**
+ * Admin: Retrieve all orders across all customers with status filtering and customer search
+ */
+export const getAllOrdersForAdmin = async ({ status, search, page = 1, limit = 50 }) => {
+  const offset = (Math.max(1, page) - 1) * limit;
+
+  // Build conditions
+  const conditions = [];
+
+  if (status && status !== 'all') {
+    if (status === 'in_transit') {
+      conditions.push(or(eq(orders.status, 'in_transit'), eq(orders.status, 'shipped')));
+    } else {
+      conditions.push(eq(orders.status, status));
+    }
+  }
+
+  if (search && search.trim()) {
+    const q = `%${search.trim()}%`;
+    conditions.push(
+      or(
+        ilike(orders.order_number, q),
+        ilike(users.name, q),
+        ilike(users.email, q),
+        ilike(users.phone, q)
+      )
+    );
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Total count
+  const [{ count }] = await db
+    .select({ count: sql`count(*)` })
+    .from(orders)
+    .innerJoin(users, eq(orders.user_id, users.id))
+    .where(whereClause);
+
+  const total = Number(count || 0);
+
+  // Paginated query
+  const rawOrders = await db
+    .select({
+      id: orders.id,
+      order_number: orders.order_number,
+      user_id: orders.user_id,
+      status: orders.status,
+      subtotal_paise: orders.subtotal_paise,
+      shipping_paise: orders.shipping_paise,
+      total_paise: orders.total_paise,
+      shipping_address: orders.shipping_address,
+      expected_delivery_date: orders.expected_delivery_date,
+      razorpay_order_id: orders.razorpay_order_id,
+      created_at: orders.created_at,
+      customer_name: users.name,
+      customer_email: users.email,
+      customer_phone: users.phone,
+    })
+    .from(orders)
+    .innerJoin(users, eq(orders.user_id, users.id))
+    .where(whereClause)
+    .orderBy(desc(orders.created_at))
+    .limit(limit)
+    .offset(offset);
+
+  if (rawOrders.length === 0) {
+    return {
+      orders: [],
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  // Fetch enriched items
+  const orderIds = rawOrders.map((o) => o.id);
+  const allItems = await db
+    .select({
+      id: orderItems.id,
+      order_id: orderItems.order_id,
+      variant_id: orderItems.variant_id,
+      quantity: orderItems.quantity,
+      unit_price_paise: orderItems.unit_price_paise,
+      product_name: products.name,
+      product_slug: products.slug,
+      shade_name: productVariants.shade_name,
+      shade_code: productVariants.shade_code,
+      color_hex: productVariants.color_hex,
+      formula: productVariants.formula,
+      sku: productVariants.sku,
+    })
+    .from(orderItems)
+    .innerJoin(productVariants, eq(orderItems.variant_id, productVariants.id))
+    .innerJoin(products, eq(productVariants.product_id, products.id))
+    .where(inArray(orderItems.order_id, orderIds))
+    .orderBy(asc(orderItems.id));
+
+  const itemsMap = new Map();
+  for (const item of allItems) {
+    if (!itemsMap.has(item.order_id)) {
+      itemsMap.set(item.order_id, []);
+    }
+    itemsMap.get(item.order_id).push(item);
+  }
+
+  const enrichedOrders = rawOrders.map((order) => ({
+    id: order.id,
+    order_number: order.order_number,
+    user_id: order.user_id,
+    status: order.status,
+    subtotal_paise: order.subtotal_paise,
+    shipping_paise: order.shipping_paise,
+    total_paise: order.total_paise,
+    shipping_address: order.shipping_address,
+    expected_delivery_date: order.expected_delivery_date,
+    created_at: order.created_at,
+    customer: {
+      id: order.user_id,
+      name: order.customer_name,
+      email: order.customer_email,
+      phone: order.customer_phone,
+    },
+    items: itemsMap.get(order.id) || [],
+  }));
+
+  return {
+    orders: enrichedOrders,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+};
+
+/**
+ * Admin: Retrieve single order details with customer and enriched item breakdown
+ */
+export const getOrderByIdForAdmin = async (orderId) => {
+  const [order] = await db
+    .select({
+      id: orders.id,
+      order_number: orders.order_number,
+      user_id: orders.user_id,
+      status: orders.status,
+      subtotal_paise: orders.subtotal_paise,
+      shipping_paise: orders.shipping_paise,
+      total_paise: orders.total_paise,
+      shipping_address: orders.shipping_address,
+      expected_delivery_date: orders.expected_delivery_date,
+      razorpay_order_id: orders.razorpay_order_id,
+      idempotency_key: orders.idempotency_key,
+      created_at: orders.created_at,
+      customer_name: users.name,
+      customer_email: users.email,
+      customer_phone: users.phone,
+    })
+    .from(orders)
+    .innerJoin(users, eq(orders.user_id, users.id))
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) {
+    throw new NotFoundError('Order not found');
+  }
+
+  const items = await db
+    .select({
+      id: orderItems.id,
+      order_id: orderItems.order_id,
+      variant_id: orderItems.variant_id,
+      quantity: orderItems.quantity,
+      unit_price_paise: orderItems.unit_price_paise,
+      created_at: orderItems.created_at,
+      product_name: products.name,
+      product_slug: products.slug,
+      shade_name: productVariants.shade_name,
+      shade_code: productVariants.shade_code,
+      color_hex: productVariants.color_hex,
+      formula: productVariants.formula,
+      sku: productVariants.sku,
+    })
+    .from(orderItems)
+    .innerJoin(productVariants, eq(orderItems.variant_id, productVariants.id))
+    .innerJoin(products, eq(productVariants.product_id, products.id))
+    .where(eq(orderItems.order_id, order.id))
+    .orderBy(asc(orderItems.id));
+
+  return {
+    ...order,
+    customer: {
+      id: order.user_id,
+      name: order.customer_name,
+      email: order.customer_email,
+      phone: order.customer_phone,
+    },
+    items,
+  };
+};
+
+/**
+ * Admin: Update order status transition (processing -> in_transit -> delivered)
+ */
+export const updateOrderStatusByAdmin = async (orderId, nextStatus) => {
+  const validStatuses = ['pending_payment', 'paid', 'processing', 'in_transit', 'shipped', 'delivered', 'cancelled'];
+  if (!validStatuses.includes(nextStatus)) {
+    throw new AppError(`Invalid order status: ${nextStatus}. Allowed: ${validStatuses.join(', ')}`, 400);
+  }
+
+  const [existingOrder] = await db
+    .select({ id: orders.id, status: orders.status, order_number: orders.order_number })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!existingOrder) {
+    throw new NotFoundError('Order not found');
+  }
+
+  const [updatedOrder] = await db
+    .update(orders)
+    .set({ status: nextStatus })
+    .where(eq(orders.id, orderId))
+    .returning({
+      id: orders.id,
+      order_number: orders.order_number,
+      status: orders.status,
+      user_id: orders.user_id,
+      total_paise: orders.total_paise,
+    });
+
+  logger.info(
+    {
+      event: 'ORDER_STATUS_TRANSITION',
+      orderId,
+      orderNumber: existingOrder.order_number,
+      previousStatus: existingOrder.status,
+      nextStatus,
+    },
+    `[ADMIN] Order #${existingOrder.order_number} status updated to '${nextStatus}'`
+  );
+
+  return updatedOrder;
+};
+
+/**
+ * Admin: Calculate real-time KPI metrics for dashboard stat cards
+ */
+export const getAdminKpis = async () => {
+  const result = await db.execute(sql`
+    SELECT
+      count(*)::int AS total_orders,
+      count(*) FILTER (WHERE status = 'processing')::int AS processing_orders,
+      count(*) FILTER (WHERE status = 'in_transit' OR status = 'shipped')::int AS in_transit_orders,
+      count(*) FILTER (WHERE status = 'delivered')::int AS delivered_orders,
+      COALESCE(SUM(total_paise), 0)::bigint AS total_revenue_paise
+    FROM orders
+  `);
+
+  const row = result.rows[0] || {};
+  const totalRevenuePaise = Number(row.total_revenue_paise || 0);
+
+  return {
+    totalOrders: Number(row.total_orders || 0),
+    processingOrders: Number(row.processing_orders || 0),
+    inTransitOrders: Number(row.in_transit_orders || 0),
+    deliveredOrders: Number(row.delivered_orders || 0),
+    totalRevenuePaise,
+    totalRevenueRupees: Math.round(totalRevenuePaise / 100),
   };
 };

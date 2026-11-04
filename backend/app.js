@@ -18,6 +18,7 @@ import catalogRoutes from './routes/catalogRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,6 +150,7 @@ app.use('/api/v1/catalog', catalogRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // --- STATIC FRONTEND SERVING (UNIFIED CONTAINER / EC2) ---
 // Serve frontend static assets (CSS, JS, 3D models, fonts, audio, video)
@@ -164,6 +166,9 @@ app.get(['/cart', '/cart.html', '/Evoair/cart', '/Evoair/cart.html'], (req, res)
 });
 app.get(['/checkout', '/checkout.html', '/Evoair/checkout', '/Evoair/checkout.html'], (req, res) => {
   res.sendFile(path.join(frontendDist, 'checkout.html'));
+});
+app.get(['/admin', '/admin.html', '/Evoair/admin', '/Evoair/admin.html'], (req, res) => {
+  res.sendFile(path.join(frontendDist, 'admin.html'));
 });
 app.get(
   [
