@@ -292,13 +292,13 @@ export const useCart = (isAuthenticated = false, authReady = true) => {
       } else {
         if (res.status >= 500) {
           setIsBackendOffline(true);
-          setBackendError('Backend pricing engine unavailable');
+          setBackendError('Please retry in a few moments.');
         }
       }
     } catch (e) {
       console.warn('Backend server is offline or unreachable:', e);
       setIsBackendOffline(true);
-      setBackendError('Unable to connect to Evoluir server');
+      setBackendError('Please retry in a few moments.');
     }
   }, []);
 
@@ -330,7 +330,7 @@ export const useCart = (isAuthenticated = false, authReady = true) => {
     } catch (e) {
       console.warn('Failed to load server cart from backend:', e);
       setIsBackendOffline(true);
-      setBackendError('Evoluir backend server is offline or unreachable');
+      setBackendError('Please retry in a few moments.');
       // Do NOT fall back to stale browser history / localStorage items
       setIsServerCart(false);
       setServerCart(null);

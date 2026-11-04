@@ -334,9 +334,9 @@ const CheckoutPage = () => {
                           <span className="backend-offline-ping" />
                         </div>
                         <div className="backend-offline-text">
-                          <h4 className="backend-offline-title">Connecting to Live Server…</h4>
+                          <h4 className="backend-offline-title">Backend is currently down</h4>
                           <p className="backend-offline-sub">
-                            {backendError || 'Attempting to verify live order items in PostgreSQL. Stale browser history is ignored.'}
+                            {backendError || 'Please retry in a few moments.'}
                           </p>
                         </div>
                       </div>

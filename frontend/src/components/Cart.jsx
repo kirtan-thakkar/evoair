@@ -102,9 +102,9 @@ const Cart = () => {
                   <span className="backend-offline-ping" />
                 </div>
                 <div className="backend-offline-text">
-                  <h4 className="backend-offline-title">Connecting to Live Server…</h4>
+                  <h4 className="backend-offline-title">Backend is currently down</h4>
                   <p className="backend-offline-sub">
-                    {backendError || 'Attempting to establish live database connection. Ignoring stale browser history.'}
+                    {backendError || 'Please retry in a few moments.'}
                   </p>
                 </div>
               </div>
