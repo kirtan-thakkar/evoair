@@ -68,5 +68,5 @@ export const cacheService = {
 };
 
 logger.info(
-  `[Cache] Cache Service initialized. REDIS_ENABLED=${env.REDIS_ENABLED} (${env.REDIS_ENABLED === 1 ? 'Redis Mode' : 'In-Memory Graceful Mode'})`
+  `-Cache Service initialized. REDIS_ENABLED=${env.REDIS_ENABLED} (${env.REDIS_ENABLED === 1 ? 'Redis Mode' : 'In-Memory Graceful Mode'})`
 );
