@@ -35,7 +35,7 @@ services:
       CORS_ORIGIN: http://localhost:5173
       REDIS_ENABLED: 0
       OWNER_EMAIL: kirtanthakkar30@gmail.com
-      ADMIN_EMAILS: kirtanthakkar30@gmail.com
+      ADMIN_EMAILS: admin@evoair.in,kirtanthakkar30@gmail.com
     ports:
       - "5000:5000"
     volumes:
