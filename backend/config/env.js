@@ -20,7 +20,7 @@ const envSchema = z
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
     OWNER_EMAIL: z.string().email().default('kirtanthakkar30@gmail.com'),
-    ADMIN_EMAILS: z.string().default('admin@evoair.in,kirtanthakkar30@gmail.com,dummy1@gmail.com'),
+    ADMIN_EMAILS: z.string().default('admin@evoair.in,kirtanthakkar30@gmail.com'),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().default(587),
     SMTP_SECURE: z.coerce.boolean().default(false),

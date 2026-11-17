@@ -5,7 +5,7 @@ import AuthModal from './AuthModal';
 import './AdminDashboard.css';
 
 export const AdminDashboard = () => {
-  const { user, authReady } = useAuth();
+  const { user, authReady, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [kpis, setKpis] = useState({
     totalOrders: 0,
@@ -184,9 +184,20 @@ export const AdminDashboard = () => {
 
           <div className="admin-actions-cluster">
             <div className="admin-user-pill">
-              <span className="role-tag">FOUNDER ADMIN</span>
+              <span className="role-tag">ADMIN</span>
               <span>{user.email}</span>
             </div>
+            <button
+              type="button"
+              className="admin-logout-btn"
+              onClick={async () => {
+                await logout();
+                window.location.reload();
+              }}
+              title="Sign out of Admin Console"
+            >
+              Sign Out
+            </button>
             <button
               type="button"
               className="admin-refresh-btn"

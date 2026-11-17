@@ -415,7 +415,19 @@ export const getAllOrdersForAdmin = async ({ status, search, page = 1, limit = 5
   // Build conditions
   const conditions = [];
 
-  if (status && status !== 'all') {
+  const rawSearch = search?.trim();
+  const cleanedSearch = rawSearch ? rawSearch.replace(/^#+/, '').trim() : '';
+
+  // Check if search looks like a direct order identifier (#EVO-..., EVO-..., UUID, order_...)
+  const isDirectOrderSearch = Boolean(
+    cleanedSearch &&
+      (/^EVO-?/i.test(cleanedSearch) ||
+        /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(cleanedSearch) ||
+        /^order_/i.test(cleanedSearch))
+  );
+
+  // If searching for a specific order identifier, don't restrict by tab status so the order is always found
+  if (status && status !== 'all' && !isDirectOrderSearch) {
     if (status === 'in_transit') {
       conditions.push(or(eq(orders.status, 'in_transit'), eq(orders.status, 'shipped')));
     } else {
@@ -423,14 +435,19 @@ export const getAllOrdersForAdmin = async ({ status, search, page = 1, limit = 5
     }
   }
 
-  if (search && search.trim()) {
-    const q = `%${search.trim()}%`;
+  if (cleanedSearch) {
+    const qClean = `%${cleanedSearch}%`;
+    const qRaw = `%${rawSearch}%`;
     conditions.push(
       or(
-        ilike(orders.order_number, q),
-        ilike(users.name, q),
-        ilike(users.email, q),
-        ilike(users.phone, q)
+        ilike(orders.order_number, qClean),
+        ilike(orders.order_number, qRaw),
+        sql`CAST(${orders.id} AS text) ILIKE ${qClean}`,
+        sql`CAST(${orders.id} AS text) ILIKE ${qRaw}`,
+        sql`CAST(${orders.razorpay_order_id} AS text) ILIKE ${qClean}`,
+        ilike(users.name, qRaw),
+        ilike(users.email, qRaw),
+        ilike(users.phone, qClean)
       )
     );
   }
