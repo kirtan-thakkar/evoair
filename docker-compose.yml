@@ -36,6 +36,9 @@ services:
       REDIS_ENABLED: 0
       OWNER_EMAIL: kirtanthakkar30@gmail.com
       ADMIN_EMAILS: admin@evoair.in,kirtanthakkar30@gmail.com
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
     ports:
       - "5000:5000"
     volumes:

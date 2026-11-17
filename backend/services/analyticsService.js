@@ -11,25 +11,128 @@ const __dirname = path.dirname(__filename);
 const logDir = path.join(__dirname, '../logs');
 const logFile = path.join(logDir, 'user-activity.log');
 
-/**
- * Appends user journey, drop-off, and debugging logs to local log storage
- */
-export const recordUserActivity = async (entry) => {
-  try {
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-    const line = JSON.stringify(entry) + '\n';
-    await fs.promises.appendFile(logFile, line, 'utf8');
+// Security & Disk Bounds Configuration
+const MAX_LOG_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB per file
+const MAX_BACKUP_FILES = 3; // Keeps up to 3 rotated backups (max 20 MB total storage)
+const MAX_LINE_BYTES = 2048; // Max 2 KB per line to stop oversized entries
+const SENSITIVE_KEY_REGEX = /password|token|secret|authorization|cookie|credential|key/i;
+const JWT_OR_BEARER_REGEX = /^(Bearer\s+)?[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/;
 
-    if (entry.event === 'error' || entry.event === 'unhandled_rejection') {
-      logger.warn({ userActivity: entry }, `[Telemetry Error] ${entry.event} on ${entry.path}`);
-    } else {
-      logger.info({ userActivity: entry }, `[Telemetry] ${entry.event} on ${entry.path}`);
+// Serial mutex queue to prevent race conditions during log file rotation
+let writeQueue = Promise.resolve();
+
+/**
+ * Strips newlines, control characters, and dangerous input to prevent log forging/injection attacks
+ */
+const sanitizeString = (str, maxLength = 256) => {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/[\r\n\x00-\x1f\x7f]/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+};
+
+/**
+ * Sanitizes metadata dictionary to redact sensitive keys and strip control characters
+ */
+const sanitizeMetadata = (meta) => {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return {};
+  const cleaned = {};
+  for (const [key, value] of Object.entries(meta)) {
+    const safeKey = sanitizeString(key, 256);
+    if (!safeKey) continue;
+
+    if (SENSITIVE_KEY_REGEX.test(safeKey)) {
+      cleaned[safeKey] = '[REDACTED]';
+    } else if (typeof value === 'string') {
+      if (JWT_OR_BEARER_REGEX.test(value.trim())) {
+        cleaned[safeKey] = '[REDACTED]';
+      } else {
+        cleaned[safeKey] = sanitizeString(value, 256);
+      }
+    } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+      cleaned[safeKey] = value;
     }
-  } catch (err) {
-    logger.error({ err }, 'Failed to record user activity log');
   }
+  return cleaned;
+};
+
+/**
+ * Rotates logs if the primary log file exceeds MAX_LOG_SIZE_BYTES
+ */
+const rotateLogIfNeeded = async () => {
+  if (!fs.existsSync(logFile)) return;
+
+  const stats = await fs.promises.stat(logFile);
+  if (stats.size < MAX_LOG_SIZE_BYTES) return;
+
+  // Remove oldest backup if it exists
+  const oldestBackup = path.join(logDir, `user-activity.${MAX_BACKUP_FILES}.log`);
+  if (fs.existsSync(oldestBackup)) {
+    await fs.promises.unlink(oldestBackup);
+  }
+
+  // Shift existing rotated files: .2 -> .3, .1 -> .2
+  for (let i = MAX_BACKUP_FILES - 1; i >= 1; i--) {
+    const currentBackup = path.join(logDir, `user-activity.${i}.log`);
+    const nextBackup = path.join(logDir, `user-activity.${i + 1}.log`);
+    if (fs.existsSync(currentBackup)) {
+      await fs.promises.rename(currentBackup, nextBackup);
+    }
+  }
+
+  // Rotate active log to .1
+  await fs.promises.rename(logFile, path.join(logDir, 'user-activity.1.log'));
+};
+
+/**
+ * Appends sanitized, bounded user journey and telemetry logs to local storage
+ */
+export const recordUserActivity = (entry) => {
+  // Chain through sequential queue to make rotation and append race-condition safe
+  writeQueue = writeQueue
+    .then(async () => {
+      if (!fs.existsSync(logDir)) {
+        await fs.promises.mkdir(logDir, { recursive: true });
+      }
+
+      await rotateLogIfNeeded();
+
+      const sanitizedEntry = {
+        timestamp: entry.timestamp || new Date().toISOString(),
+        event: sanitizeString(entry.event, 64) || 'unknown_event',
+        path: sanitizeString(entry.path, 256) || '/',
+        sessionId: sanitizeString(entry.sessionId, 64) || 'anon_session',
+        userId: entry.userId ? sanitizeString(String(entry.userId), 64) : null,
+        ip: sanitizeString(entry.ip, 64),
+        userAgent: sanitizeString(entry.userAgent, 256),
+        metadata: sanitizeMetadata(entry.metadata),
+      };
+
+      let line = JSON.stringify(sanitizedEntry) + '\n';
+
+      // Enforce strict per-line byte bounds to prevent disk exhaustion
+      if (Buffer.byteLength(line, 'utf8') > MAX_LINE_BYTES) {
+        sanitizedEntry.metadata = { _truncated: true };
+        line = JSON.stringify(sanitizedEntry) + '\n';
+        if (Buffer.byteLength(line, 'utf8') > MAX_LINE_BYTES) {
+          line = line.slice(0, MAX_LINE_BYTES - 1) + '\n';
+        }
+      }
+
+      await fs.promises.appendFile(logFile, line, 'utf8');
+
+      if (sanitizedEntry.event === 'error' || sanitizedEntry.event === 'unhandled_rejection') {
+        logger.warn({ userActivity: sanitizedEntry }, `[Telemetry Error] ${sanitizedEntry.event} on ${sanitizedEntry.path}`);
+      } else {
+        logger.info({ userActivity: sanitizedEntry }, `[Telemetry] ${sanitizedEntry.event} on ${sanitizedEntry.path}`);
+      }
+    })
+    .catch((err) => {
+      logger.error({ err }, 'Failed to record user activity log');
+    });
+
+  return writeQueue;
 };
 
 /**

@@ -19,6 +19,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,9 +125,26 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // 6. Body Parsing with strict limits (DoS protection) & Cookie Parser
-// Note: Webhook raw parsing (Phase 6) will be inserted BEFORE this in the future
-app.use(express.json({ limit: '20kb' }));
-app.use(express.text({ type: ['text/plain', 'application/json'], limit: '20kb' }));
+// Preserves exact raw buffer for cryptographic webhook signature verification (e.g. Razorpay HMAC SHA256)
+app.use(
+  express.json({
+    limit: '20kb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
+app.use(
+  express.text({
+    type: ['text/plain', 'application/json'],
+    limit: '20kb',
+    verify: (req, res, buf) => {
+      if (!req.rawBody && buf) {
+        req.rawBody = buf;
+      }
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
@@ -151,6 +169,7 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // --- STATIC FRONTEND SERVING (UNIFIED CONTAINER / EC2) ---
 // Serve frontend static assets (CSS, JS, 3D models, fonts, audio, video)

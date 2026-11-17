@@ -188,14 +188,14 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
       // 7. Calculate dynamic expected delivery date (Mentor Directive 2)
       const expected_delivery_date = calculateExpectedDeliveryDate();
 
-      // 8. Insert order with unique order_number and initial 'processing' status
+      // 8. Insert order with unique order_number and initial 'pending_payment' status
       const order_number = await generateUniqueOrderNumber(tx);
       const [insertedOrder] = await tx
         .insert(orders)
         .values({
           user_id: userId,
           order_number,
-          status: 'processing',
+          status: 'pending_payment',
           subtotal_paise,
           shipping_paise,
           total_paise,
@@ -275,24 +275,6 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
         isExisting: false,
       };
     });
-
-    // Payment Fulfillment Promise: Trigger asynchronous email notifications upon successful order creation
-    if (!result.isExisting && result.order?.id) {
-      Promise.resolve(result.order.id)
-        .then(async (orderId) => {
-          logger.info(
-            { orderId, orderNumber: result.order.order_number },
-            '[PAYMENT_PROMISE] Payment successful, resolving fulfillment promise and dispatching notifications'
-          );
-          await emailService.sendOrderConfirmationEmails(orderId);
-        })
-        .catch((err) => {
-          logger.error(
-            { err: err.message, orderId: result.order.id },
-            '[PAYMENT_PROMISE] Error executing fulfillment promise handler'
-          );
-        });
-    }
 
     return result;
   } catch (err) {
@@ -698,4 +680,73 @@ export const getAdminKpis = async () => {
     totalRevenuePaise,
     totalRevenueRupees: Math.round(totalRevenuePaise / 100),
   };
+};
+
+/**
+ * Fulfills order upon verified payment confirmation.
+ * Idempotent: safe against retries, webhooks, and duplicate requests.
+ */
+export const fulfillOrderPayment = async (orderId, paymentRecord = null, existingTx = null) => {
+  const runInContext = async (tx) => {
+    const [order] = await tx
+      .select({
+        id: orders.id,
+        order_number: orders.order_number,
+        status: orders.status,
+        user_id: orders.user_id,
+        total_paise: orders.total_paise,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!order) {
+      throw new NotFoundError('Order not found');
+    }
+
+    // Idempotency: If already processing or delivered, return cleanly without duplicate fulfillment
+    if (['processing', 'paid', 'shipped', 'in_transit', 'delivered'].includes(order.status)) {
+      logger.info(
+        { orderId, status: order.status },
+        '[PAYMENT_PROMISE] Order already fulfilled/processed, skipping duplicate fulfillment'
+      );
+      return { order, alreadyProcessed: true };
+    }
+
+    const [updatedOrder] = await tx
+      .update(orders)
+      .set({ status: 'processing' })
+      .where(eq(orders.id, orderId))
+      .returning({
+        id: orders.id,
+        order_number: orders.order_number,
+        status: orders.status,
+        user_id: orders.user_id,
+        total_paise: orders.total_paise,
+      });
+
+    return { order: updatedOrder, alreadyProcessed: false };
+  };
+
+  const result = existingTx ? await runInContext(existingTx) : await db.transaction(runInContext);
+
+  // Asynchronous fulfillment promise dispatch
+  if (!result.alreadyProcessed && result.order?.id) {
+    Promise.resolve(result.order.id)
+      .then(async (id) => {
+        logger.info(
+          { orderId: id, orderNumber: result.order.order_number },
+          '[PAYMENT_PROMISE] Payment successful, resolving fulfillment promise and dispatching notifications'
+        );
+        await emailService.sendOrderConfirmationEmails(id);
+      })
+      .catch((err) => {
+        logger.error(
+          { err: err.message, orderId },
+          '[PAYMENT_PROMISE] Error executing fulfillment promise handler'
+        );
+      });
+  }
+
+  return result;
 };
