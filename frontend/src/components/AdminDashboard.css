@@ -166,7 +166,7 @@
 /* KPI Cards Row */
 .admin-kpis-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -189,6 +189,10 @@
   right: 0;
   height: 2px;
   background: transparent;
+}
+
+.admin-kpi-card.kpi-pending::before {
+  background: #facc15;
 }
 
 .admin-kpi-card.kpi-processing::before {
@@ -379,6 +383,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.admin-status-badge.status-pending_payment {
+  background: rgba(234, 179, 8, 0.16);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.35);
 }
 
 .admin-status-badge.status-processing {
@@ -592,6 +602,18 @@
 }
 
 /* Active State Colors */
+.admin-state-btn.state-pending-action {
+  background: rgba(234, 179, 8, 0.16);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  font-weight: 700;
+}
+
+.admin-state-btn.state-pending-action:hover:not(:disabled) {
+  background: #facc15;
+  color: #000000;
+}
+
 .admin-state-btn.active.state-processing {
   background: #f59e0b;
   color: #000000;

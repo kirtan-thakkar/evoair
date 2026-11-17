@@ -9,6 +9,7 @@ export const AdminDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [kpis, setKpis] = useState({
     totalOrders: 0,
+    pendingOrders: 0,
     processingOrders: 0,
     inTransitOrders: 0,
     deliveredOrders: 0,
@@ -229,6 +230,12 @@ export const AdminDashboard = () => {
             <div className="admin-kpi-caption">All-time lifetime orders</div>
           </div>
 
+          <div className="admin-kpi-card kpi-pending">
+            <div className="admin-kpi-label" style={{ color: '#facc15' }}>Awaiting Payment</div>
+            <div className="admin-kpi-value" style={{ color: '#facc15' }}>{kpis.pendingOrders || 0}</div>
+            <div className="admin-kpi-caption">Checkout initiated / unpaid</div>
+          </div>
+
           <div className="admin-kpi-card kpi-processing">
             <div className="admin-kpi-label" style={{ color: '#fbbf24' }}>Needs Packing</div>
             <div className="admin-kpi-value" style={{ color: '#fbbf24' }}>{kpis.processingOrders}</div>
@@ -265,6 +272,13 @@ export const AdminDashboard = () => {
               onClick={() => setActiveStatus('all')}
             >
               All Orders <span className="admin-tab-count">{kpis.totalOrders}</span>
+            </button>
+            <button
+              type="button"
+              className={`admin-tab-btn ${activeStatus === 'pending_payment' ? 'active' : ''}`}
+              onClick={() => setActiveStatus('pending_payment')}
+            >
+              Awaiting Payment <span className="admin-tab-count">{kpis.pendingOrders || 0}</span>
             </button>
             <button
               type="button"
@@ -336,7 +350,9 @@ export const AdminDashboard = () => {
               const isUpdating = updatingId === order.id;
 
               const statusBadgeClass =
-                order.status === 'processing'
+                order.status === 'pending_payment'
+                  ? 'status-pending_payment'
+                  : order.status === 'processing'
                   ? 'status-processing'
                   : order.status === 'in_transit' || order.status === 'shipped'
                   ? 'status-in_transit'
@@ -345,7 +361,9 @@ export const AdminDashboard = () => {
                   : '';
 
               const statusDisplayText =
-                order.status === 'processing'
+                order.status === 'pending_payment'
+                  ? 'Awaiting Payment'
+                  : order.status === 'processing'
                   ? 'Processing / Atelier'
                   : order.status === 'in_transit' || order.status === 'shipped'
                   ? 'In Transit'
@@ -453,6 +471,18 @@ export const AdminDashboard = () => {
                     </div>
 
                     <div className="admin-state-switcher">
+                      {order.status === 'pending_payment' && (
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          className="admin-state-btn state-pending-action"
+                          onClick={() => handleUpdateStatus(order.id, order.order_number, 'processing')}
+                          title="Confirm offline payment and move to processing atelier"
+                        >
+                          {isUpdating ? '...' : '✓ Confirm Payment & Start Packing'}
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         disabled={isUpdating}

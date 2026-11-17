@@ -662,6 +662,7 @@ export const getAdminKpis = async () => {
   const result = await db.execute(sql`
     SELECT
       count(*)::int AS total_orders,
+      count(*) FILTER (WHERE status = 'pending_payment')::int AS pending_orders,
       count(*) FILTER (WHERE status = 'processing')::int AS processing_orders,
       count(*) FILTER (WHERE status = 'in_transit' OR status = 'shipped')::int AS in_transit_orders,
       count(*) FILTER (WHERE status = 'delivered')::int AS delivered_orders,
@@ -674,6 +675,7 @@ export const getAdminKpis = async () => {
 
   return {
     totalOrders: Number(row.total_orders || 0),
+    pendingOrders: Number(row.pending_orders || 0),
     processingOrders: Number(row.processing_orders || 0),
     inTransitOrders: Number(row.in_transit_orders || 0),
     deliveredOrders: Number(row.delivered_orders || 0),
