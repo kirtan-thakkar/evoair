@@ -418,11 +418,12 @@ export const getAllOrdersForAdmin = async ({ status, search, page = 1, limit = 5
   const rawSearch = search?.trim();
   const cleanedSearch = rawSearch ? rawSearch.replace(/^#+/, '').trim() : '';
 
-  // Check if search looks like a direct order identifier (#EVO-..., EVO-..., UUID, order_...)
+  // Check if search looks like a direct order identifier (#EVO-..., EVO-..., numbers like 850641, UUID, order_...)
   const isDirectOrderSearch = Boolean(
     cleanedSearch &&
       (/^EVO-?/i.test(cleanedSearch) ||
-        /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(cleanedSearch) ||
+        /\d{4,}/.test(cleanedSearch) ||
+        /^[0-9a-f]{8}/i.test(cleanedSearch) ||
         /^order_/i.test(cleanedSearch))
   );
 

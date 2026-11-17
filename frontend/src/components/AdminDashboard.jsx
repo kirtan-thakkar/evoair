@@ -17,10 +17,19 @@ export const AdminDashboard = () => {
   });
   const [activeStatus, setActiveStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // Debounce live search input by 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const showToast = useCallback((message, duration = 4000) => {
     setToast(message);
@@ -48,11 +57,12 @@ export const AdminDashboard = () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (activeStatus && activeStatus !== 'all') {
+      // When searching, query globally across all statuses so searched orders are never hidden by the active tab
+      if (!debouncedSearch && activeStatus && activeStatus !== 'all') {
         params.append('status', activeStatus);
       }
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim());
+      if (debouncedSearch) {
+        params.append('search', debouncedSearch);
       }
       params.append('limit', '100');
 
@@ -66,7 +76,7 @@ export const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeStatus, searchQuery, showToast]);
+  }, [activeStatus, debouncedSearch, showToast]);
 
   useEffect(() => {
     if (user && user.role === 'admin') {
