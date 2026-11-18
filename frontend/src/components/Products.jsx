@@ -44,9 +44,6 @@ export const CompleteYourKit = () => (
       <div className="ck-acc-card">
         <div className="ck-acc-number">02</div>
         <div className="ck-acc-name">Evo-Bottles</div>
-        <p className="ck-acc-desc">
-          Want to use your own foundation? Buy our empty, refillable capsules. Pack of 20.
-        </p>
         <div className="ck-acc-price">₹1,799</div>
         <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="/products#evobottles">
           View
@@ -70,6 +67,8 @@ const Products = () => {
   const selectedFormula = fillFormulas.find(formula => formula.id === selectedFormulaId) || fillFormulas[0];
   const [selectedShadeByFormula, setSelectedShadeByFormula] = useState(defaultShadeByFormula);
   const selectedShade = selectedShadeByFormula[selectedFormulaId] || selectedFormula.shades[0];
+  const foundationFormula = fillFormulas.find(f => f.id === 'foundation') || fillFormulas[0];
+  const [selectedBottleShade, setSelectedBottleShade] = useState(foundationFormula.shades[0]);
 
   useEffect(() => {
     const handleHash = () => {
@@ -311,52 +310,45 @@ const Products = () => {
                 ) : activeProduct === 'evobottles' ? (
                   <>
                     <div className="ck-title">Evo-Bottles</div>
-                    <div className="ck-subtitle-line">Your Signature Blend. Perfected.</div>
+                    <div className="ck-subtitle-line">Your Signature Foundation Blends.</div>
                     <div className="ck-mobile-product-visual">
                       <img src={heroCapsules} alt="Evo-Bottles Product" className="ck-product-img" />
                     </div>
                     <p className="ck-desc">
-                      Professional-grade, refillable capsules for your Evo-Air device. Select your intended formula consistency and personal shade profile for customized atomization and flawless skincare blending.
+                      Precision refill capsules engineered exclusively for your Evo-Air device. Select your exact foundation shade from our master 10-shade range for flawless, weightless micro-mist atomization.
                     </p>
                     <div className="ck-price-block">
                       <span className="ck-price">₹1,799</span>
                       <span className="ck-price-note">Pack of 20 · Free shipping</span>
                     </div>
+                    <div
+                      className="ck-promo-callout"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        margin: '10px 0 16px 0',
+                        padding: '8px 14px',
+                        background: 'rgba(66, 252, 255, 0.08)',
+                        border: '1px solid rgba(66, 252, 255, 0.25)',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        color: '#42fcff',
+                        letterSpacing: '0.02em',
+                      }}
+                    >
+                      <span>✨ Early Season Launch: 1st Pack of Evo-Bottles Included FREE with any Evo-Air Device purchase</span>
+                    </div>
                     <div className="ck-option-panel ck-fill-selector">
-                      <div className="ck-option-kicker">Choose Formula</div>
-                      <div className="ck-segment-row">
-                        {fillFormulas.map(formula => {
-                          const isSelected = selectedFormulaId === formula.id;
-                          return (
-                            <button
-                              key={formula.id}
-                              type="button"
-                              className={`ck-segment-choice${isSelected ? ' is-selected' : ''}`}
-                              onClick={() => setSelectedFormulaId(formula.id)}
-                              aria-pressed={isSelected}
-                              style={{ position: 'relative' }}
-                            >
-                              {isSelected && (
-                                <motion.span
-                                  layoutId="active-bottles-formula-pill"
-                                  className="ck-pill-active-bg"
-                                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                                />
-                              )}
-                              <span className="ck-tab-btn-text" style={{ position: 'relative', zIndex: 1 }}>{formula.name}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="ck-option-kicker">Choose Shade</div>
+                      <div className="ck-option-kicker">Choose Foundation Shade (Pack of 20)</div>
                       <div className="ck-shade-grid">
-                        {selectedFormula.shades.map(shade => (
+                        {foundationFormula.shades.map(shade => (
                           <button
                             key={shade.code}
                             type="button"
-                            className={`ck-shade-choice${selectedShade.code === shade.code ? ' is-selected' : ''}`}
-                            onClick={() => setSelectedShadeByFormula(prev => ({ ...prev, [selectedFormulaId]: shade }))}
-                            aria-pressed={selectedShade.code === shade.code}
+                            className={`ck-shade-choice${selectedBottleShade.code === shade.code ? ' is-selected' : ''}`}
+                            onClick={() => setSelectedBottleShade(shade)}
+                            aria-pressed={selectedBottleShade.code === shade.code}
                           >
                             <span className="ck-shade-swatch" style={{ '--swatch': shade.color }} />
                             <span className="ck-shade-copy">
@@ -367,7 +359,7 @@ const Products = () => {
                         ))}
                       </div>
                       <div className="ck-selection-summary">
-                        Selected: Pack of 20 · {selectedFormula.name} · {selectedShade.code} {selectedShade.name}
+                        Selected: Pack of 20 · Foundation · {selectedBottleShade.code} {selectedBottleShade.name}
                       </div>
                     </div>
                     <div className="ck-hero-actions">
@@ -376,16 +368,16 @@ const Products = () => {
                         onClick={(e) => {
                           e.preventDefault();
                           addToCart({
-                            id: `evo-bottles-${selectedFormula.id}-${selectedShade.code}`,
+                            id: `evo-bottles-foundation-${selectedBottleShade.code}`,
                             productSlug: 'evo-bottles',
                             productId: '00000000-0000-4000-8000-000000000003',
-                            name: `Evo-Bottles (${selectedFormula.name})`,
-                            subtitle: `Pack of 20 · Shade: ${selectedShade.code} ${selectedShade.name}`,
-                            formulaId: selectedFormula.id,
-                            formulaName: selectedFormula.name,
-                            shadeCode: selectedShade.code,
-                            shadeName: selectedShade.name,
-                            shadeSwatch: selectedShade.color,
+                            name: 'Evo-Bottle (Foundation)',
+                            subtitle: `Pack of 20 · Shade: ${selectedBottleShade.code} ${selectedBottleShade.name}`,
+                            formulaId: 'foundation',
+                            formulaName: 'Foundation',
+                            shadeCode: selectedBottleShade.code,
+                            shadeName: selectedBottleShade.name,
+                            shadeSwatch: selectedBottleShade.color,
                             price: '₹1,799',
                             numericPrice: 1799,
                             image: heroCapsules,
@@ -488,6 +480,24 @@ const Products = () => {
                             price: '₹14,999',
                             numericPrice: 14999,
                             image: evoairRender,
+                          });
+
+                          // Automatically bundle the 1 complimentary Evo-Bottle in the customer's selected shade
+                          addToCart({
+                            id: `evo-bottles-foundation-${selectedShade.code}`,
+                            productSlug: 'evo-bottles',
+                            productId: '00000000-0000-4000-8000-000000000003',
+                            name: 'Evo-Bottle (Foundation)',
+                            subtitle: `Pack of 20 · Shade: ${selectedShade.code} ${selectedShade.name} · Complimentary with Device`,
+                            formulaId: 'foundation',
+                            formulaName: 'Foundation',
+                            shadeCode: selectedShade.code,
+                            shadeName: selectedShade.name,
+                            shadeSwatch: selectedShade.color,
+                            price: '₹1,799',
+                            numericPrice: 1799,
+                            isComplimentaryWithDevice: true,
+                            image: heroCapsules,
                           });
                           window.location.href = '/cart';
                         }}

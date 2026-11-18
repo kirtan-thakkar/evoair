@@ -422,7 +422,7 @@ const Checkout = () => {
             <div className="ck-acc-number">02</div>
             <div className="ck-acc-name">Evo-Bottles</div>
             <p className="ck-acc-desc">
-              Want to use your own foundation? Buy our empty, refillable capsules. Pack of 20.
+              Want to use your own foundation? Buy our foundation bottles
             </p>
             <div className="ck-acc-price">₹1,799</div>
             <MagneticButton className="btn-secondary" style={{ marginTop: '20px' }} href="/products#evobottles">

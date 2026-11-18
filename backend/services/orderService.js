@@ -177,11 +177,49 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           );
       }
 
-      // 6. Compute totals on server from DB prices
-      const subtotal_paise = items.reduce((acc, item) => {
+      // 6. Promotional Rule: 1 complimentary Evo-Bottle per Evo-Air Device (Early Season Offer)
+      const deviceCount = items.reduce((acc, item) => {
         const v = variantMap.get(item.variantId);
-        return acc + v.pricePaise * item.quantity;
+        return v?.productSlug === 'evoair' ? acc + (item.quantity || 1) : acc;
       }, 0);
+
+      let remainingFreeBottles = deviceCount;
+      const pendingItemsToInsert = [];
+      let subtotal_paise = 0;
+
+      for (const item of items) {
+        const v = variantMap.get(item.variantId);
+        const isBottle =
+          v?.productSlug === 'evo-bottles' ||
+          v?.sku?.includes('BTL') ||
+          v?.sku?.includes('BOTTLE');
+        const qty = item.quantity || 1;
+
+        let freeQty = 0;
+        if (isBottle && remainingFreeBottles > 0) {
+          freeQty = Math.min(qty, remainingFreeBottles);
+          remainingFreeBottles -= freeQty;
+        }
+        const paidQty = qty - freeQty;
+
+        if (freeQty > 0) {
+          pendingItemsToInsert.push({
+            variant_id: item.variantId,
+            quantity: freeQty,
+            unit_price_paise: 0,
+          });
+        }
+
+        if (paidQty > 0) {
+          pendingItemsToInsert.push({
+            variant_id: item.variantId,
+            quantity: paidQty,
+            unit_price_paise: v.pricePaise,
+          });
+          subtotal_paise += v.pricePaise * paidQty;
+        }
+      }
+
       const shipping_paise = subtotal_paise > 0 ? SHIPPING_FLAT_PAISE : 0;
       const total_paise = subtotal_paise + shipping_paise;
 
@@ -219,12 +257,12 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           created_at: orders.created_at,
         });
 
-      // 9. Insert order items
-      const itemsToInsert = items.map((item) => ({
+      // 9. Insert order items with exact database-enforced promotional prices
+      const itemsToInsert = pendingItemsToInsert.map((item) => ({
         order_id: insertedOrder.id,
-        variant_id: item.variantId,
+        variant_id: item.variant_id,
         quantity: item.quantity,
-        unit_price_paise: variantMap.get(item.variantId).pricePaise,
+        unit_price_paise: item.unit_price_paise,
       }));
 
       const insertedItems = await tx

@@ -408,6 +408,10 @@ export const useCart = (isAuthenticated = false, authReady = true) => {
                     line_total_paise: match.line_total_paise,
                     formatted_price: match.formatted_price,
                     formatted_line_total: match.formatted_line_total,
+                    is_complimentary: match.is_complimentary,
+                    free_quantity: match.free_quantity,
+                    paid_quantity: match.paid_quantity,
+                    promo_badge: match.promo_badge,
                   };
                 }
                 return it;

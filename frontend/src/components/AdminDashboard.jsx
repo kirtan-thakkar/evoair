@@ -431,6 +431,11 @@ export const AdminDashboard = () => {
                         {order.items?.map((item) => {
                           const itemRupees = Math.round((item.unit_price_paise || 0) / 100);
                           const totalItemRupees = itemRupees * (item.quantity || 1);
+                          const isComplimentary =
+                            (item.unit_price_paise === 0 || itemRupees === 0) &&
+                            (item.product_slug === 'evo-bottles' ||
+                              item.product_name?.toLowerCase().includes('bottle'));
+
                           return (
                             <div key={item.id} className="admin-item-row">
                               <div className="admin-item-left">
@@ -449,6 +454,22 @@ export const AdminDashboard = () => {
                                         {item.formula}
                                       </span>
                                     )}
+                                    {isComplimentary && (
+                                      <span
+                                        style={{
+                                          marginLeft: '6px',
+                                          padding: '1px 6px',
+                                          background: 'rgba(66, 252, 255, 0.1)',
+                                          border: '1px solid rgba(66, 252, 255, 0.3)',
+                                          borderRadius: '4px',
+                                          fontSize: '9px',
+                                          color: '#42fcff',
+                                          textTransform: 'uppercase',
+                                        }}
+                                      >
+                                        Free Promo
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="admin-item-shade-sub">
                                     Shade: <strong>{item.shade_name || 'Standard'}</strong>
@@ -457,7 +478,14 @@ export const AdminDashboard = () => {
                                 </div>
                               </div>
                               <div className="admin-item-pricing">
-                                ₹{totalItemRupees.toLocaleString('en-IN')}
+                                {isComplimentary ? (
+                                  <span style={{ color: '#42fcff', fontWeight: 600 }}>
+                                    <s style={{ opacity: 0.5, marginRight: '4px', color: '#a0a0a5' }}>₹1,799</s>
+                                    ₹0
+                                  </span>
+                                ) : (
+                                  `₹${totalItemRupees.toLocaleString('en-IN')}`
+                                )}
                               </div>
                             </div>
                           );

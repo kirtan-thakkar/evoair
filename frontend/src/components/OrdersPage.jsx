@@ -305,6 +305,10 @@ const OrdersPage = () => {
                       {(order.items || []).map((item, idx) => {
                         const itemPriceRupees = Math.round((item.unit_price_paise || 0) / 100);
                         const itemTotalRupees = itemPriceRupees * (item.quantity || 1);
+                        const isComplimentary =
+                          (item.unit_price_paise === 0 || itemTotalRupees === 0) &&
+                          (item.product_slug === 'evo-bottles' ||
+                            item.product_name?.toLowerCase().includes('bottle'));
                         const formulaLabel =
                           item.formula && item.formula !== 'foundation' && item.formula !== 'accessories'
                             ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1)
@@ -320,6 +324,23 @@ const OrdersPage = () => {
                                 {formulaLabel && (
                                   <span className="order-item-formula-tag">
                                     {formulaLabel}
+                                  </span>
+                                )}
+                                {isComplimentary && (
+                                  <span
+                                    style={{
+                                      marginLeft: '8px',
+                                      padding: '2px 8px',
+                                      background: 'rgba(66, 252, 255, 0.1)',
+                                      border: '1px solid rgba(66, 252, 255, 0.3)',
+                                      borderRadius: '4px',
+                                      fontSize: '10px',
+                                      color: '#42fcff',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.04em',
+                                    }}
+                                  >
+                                    1 Free Shade Offer
                                   </span>
                                 )}
                               </div>
@@ -338,9 +359,20 @@ const OrdersPage = () => {
                                 <span className="order-item-qty">Qty: {item.quantity || 1}</span>
                               </div>
                             </div>
-                            <span className="order-item-right">
-                              ₹{itemTotalRupees.toLocaleString('en-IN')}
-                            </span>
+                            {isComplimentary ? (
+                              <div className="order-item-right" style={{ textAlign: 'right' }}>
+                                <div style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '11px', color: '#a0a0a5' }}>
+                                  ₹1,799
+                                </div>
+                                <div style={{ color: '#42fcff', fontWeight: 600, fontSize: '14px' }}>
+                                  ₹0 · FREE
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="order-item-right">
+                                ₹{itemTotalRupees.toLocaleString('en-IN')}
+                              </span>
+                            )}
                           </div>
                         );
                       })}

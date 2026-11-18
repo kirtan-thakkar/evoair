@@ -241,6 +241,21 @@ const Cart = () => {
 
                     const formulaLabel = item.formulaName || (item.formula ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1) : '');
 
+                    const hasDeviceInCart = displayItems.some(
+                      (it) =>
+                        it.isDevice ||
+                        it.product_slug === 'evoair' ||
+                        it.productSlug === 'evoair' ||
+                        it.id === 'evo-air-device'
+                    );
+
+                    const isComplimentary =
+                      isEvoBottles &&
+                      (item.is_complimentary ||
+                        item.line_total_paise === 0 ||
+                        item.isComplimentaryWithDevice ||
+                        (hasDeviceInCart && (item.free_quantity ? item.free_quantity > 0 : true)));
+
                     let displayName = item.product_name || item.name;
                     if (isEvoAirDevice) {
                       displayName = 'Evo-Air Cordless Device';
@@ -338,6 +353,27 @@ const Cart = () => {
                             </div>
                           )}
 
+                          {/* Promotional Callout for Complimentary Evo-Bottles */}
+                          {isComplimentary && (
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginTop: '4px',
+                                marginBottom: '4px',
+                                padding: '3px 8px',
+                                background: 'rgba(66, 252, 255, 0.08)',
+                                border: '1px solid rgba(66, 252, 255, 0.25)',
+                                borderRadius: '5px',
+                                fontSize: '11px',
+                                color: '#42fcff',
+                              }}
+                            >
+                              <span>✨ 1 Complimentary Shade with Evo-Air Device</span>
+                            </div>
+                          )}
+
                           <div className="cart-item-bottom-row">
                             <div className={`cart-qty-control ${isItemLoading ? 'is-disabled' : ''}`}>
                               <button
@@ -363,9 +399,20 @@ const Cart = () => {
                               </button>
                             </div>
 
-                            <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
-                              {item.formatted_line_total || formatCurrency(itemLineTotal)}
-                            </div>
+                            {isComplimentary ? (
+                              <div className="cart-item-promo-pricing" style={{ textAlign: 'right' }}>
+                                <div style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '12px', color: '#fff' }}>
+                                  ₹1,799
+                                </div>
+                                <div style={{ color: '#42fcff', fontWeight: 600, fontSize: '15px' }}>
+                                  ₹0 · FREE
+                                </div>
+                              </div>
+                            ) : (
+                              <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
+                                {item.formatted_line_total || formatCurrency(itemLineTotal)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

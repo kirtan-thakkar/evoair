@@ -102,7 +102,7 @@ const CheckoutPage = () => {
   // Compute order items list with server pricing calculations
   const displayItems = serverCart?.items?.length ? serverCart.items : items;
   const itemsSubtotalRupees = pricing?.subtotal_rupees ?? Math.round(subtotal);
-  const shippingFeeRupees = pricing?.shipping_fee_rupees ?? (itemsSubtotalRupees > 0 ? 150 : 0);
+  const shippingFeeRupees = pricing?.shipping_fee_rupees ?? 0;
   const totalAmountRupees = pricing?.total_rupees ?? (itemsSubtotalRupees + shippingFeeRupees);
 
   const handlePlaceOrder = async (e) => {
@@ -511,7 +511,14 @@ const CheckoutPage = () => {
                                 </span>
                               </div>
                               <span className="checkout-item-price">
-                                ₹{itemPrice.toLocaleString('en-IN')}
+                                {itemPrice === 0 || item.is_complimentary ? (
+                                  <span style={{ color: '#42fcff', fontWeight: 600 }}>
+                                    <s style={{ opacity: 0.5, marginRight: '4px', color: '#a0a0a5' }}>₹1,799</s>
+                                    ₹0
+                                  </span>
+                                ) : (
+                                  `₹${itemPrice.toLocaleString('en-IN')}`
+                                )}
                               </span>
                             </div>
                           );
