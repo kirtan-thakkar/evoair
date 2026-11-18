@@ -105,7 +105,7 @@ const EvoBottles = () => {
           </div>
         </div>
         <div className="ck-hero-right">
-          <img src={heroCapsules} alt="Evo-Bottles Empty Capsules" className="ck-product-img" />
+          <img src={heroCapsules} alt="Evo-Bottles Refill Capsules" className="ck-product-img" />
         </div>
       </section>
 
