@@ -147,7 +147,6 @@ const Cart = () => {
               </MagneticButton>
             </div>
           ) : loadingCart ? (
-            /* ── Luxury Shimmer Skeleton UI while loading from server ── */
             <div className="cart-content-grid">
               <div className="cart-items-column">
                 <div className="cart-items-list">
@@ -417,21 +416,6 @@ const Cart = () => {
                   >
                     {isMutating ? 'Updating Cart…' : 'Proceed to Checkout'}
                   </MagneticButton>
-
-                  <div className="cart-guarantee-list">
-                    <div className="cart-guarantee-item">
-                      <span className="cart-guarantee-dot" />
-                      <span>Encrypted 256-Bit SSL Checkout</span>
-                    </div>
-                    <div className="cart-guarantee-item">
-                      <span className="cart-guarantee-dot" />
-                      <span>20-Day Return & Flawless Guarantee</span>
-                    </div>
-                    <div className="cart-guarantee-item">
-                      <span className="cart-guarantee-dot" />
-                      <span>1-Year Evoluir Hardware Warranty</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
