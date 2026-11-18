@@ -59,24 +59,36 @@ const seed = async () => {
       .insert(products)
       .values({
         id: SEED_PRODUCT_IDS.EVOAIR,
-        name: 'EvoAir',
+        name: 'Evo-Air Device',
         slug: 'evoair',
         description: 'Flagship cordless micro-mist skincare and airbrush luxury device.',
         is_active: true,
       })
-      .onConflictDoNothing({ target: products.slug });
+      .onConflictDoUpdate({
+        target: products.slug,
+        set: {
+          name: 'Evo-Air Device',
+          description: 'Flagship cordless micro-mist skincare and airbrush luxury device.',
+        },
+      });
 
-    // 2. Insert product: Evo-Fills Refills
+    // 2. Insert product: Evo-Fills Prefills
     await db
       .insert(products)
       .values({
         id: SEED_PRODUCT_IDS.EVO_FILLS,
-        name: 'Evo-Fills Refills',
+        name: 'Evo-Fills Prefills',
         slug: 'evo-fills',
-        description: 'Sterile pre-filled formula capsules for flawless airbrushed misting.',
+        description: 'Sterile pre-filled formula capsules for instant snap-in atomization.',
         is_active: true,
       })
-      .onConflictDoNothing({ target: products.slug });
+      .onConflictDoUpdate({
+        target: products.slug,
+        set: {
+          name: 'Evo-Fills Prefills',
+          description: 'Sterile pre-filled formula capsules for instant snap-in atomization.',
+        },
+      });
 
     // 3. Insert product: Evo-Bottles
     await db
@@ -97,6 +109,19 @@ const seed = async () => {
       });
 
     const allVariants = [];
+
+    // ── Standalone Evo-Air Device Hardware (₹14,999) ──
+    allVariants.push({
+      id: '11111111-1111-4111-8111-000000000000',
+      product_id: SEED_PRODUCT_IDS.EVOAIR,
+      formula: 'hardware',
+      shade_name: 'Standard Hardware',
+      shade_code: 'STD',
+      color_hex: '#111111',
+      sku: 'EVO-AIR-DEVICE',
+      price_paise: 1499900,
+      stock_qty: 100,
+    });
 
     // ── EvoAir Device Starter Variants (₹14,999) ──
     FOUNDATION_SHADES.forEach((s, idx) => {

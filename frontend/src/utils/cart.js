@@ -170,6 +170,9 @@ export const resolveVariantId = (item) => {
   }
 
   if (targetSlug === 'evoair') {
+    if (item.isDevice || item.id === 'evo-air-device' || item.sku === 'EVO-AIR-DEVICE') {
+      return '11111111-1111-4111-8111-000000000000';
+    }
     const devMap = {
       '02': '11111111-1111-4111-8111-000000000001',
       '03': '11111111-1111-4111-8111-000000000002',
@@ -193,7 +196,7 @@ export const resolveVariantId = (item) => {
       'H05': '11111111-1111-4111-8111-000000000025',
     };
     if (shade && devMap[shade]) return devMap[shade];
-    return '11111111-1111-4111-8111-000000000001';
+    return '11111111-1111-4111-8111-000000000000';
   }
 
   return item.variantId || item.variant_id || (UUID_REGEX.test(item.id) ? item.id : null);

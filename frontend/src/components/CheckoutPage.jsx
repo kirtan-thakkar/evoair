@@ -511,7 +511,7 @@ const CheckoutPage = () => {
                                 </span>
                               </div>
                               <span className="checkout-item-price">
-                                {itemPrice === 0 || item.is_complimentary ? (
+                                {item.is_complimentary && itemPrice === 0 ? (
                                   <span style={{ color: '#42fcff', fontWeight: 600 }}>
                                     <s style={{ opacity: 0.5, marginRight: '4px', color: '#a0a0a5' }}>₹1,799</s>
                                     ₹0

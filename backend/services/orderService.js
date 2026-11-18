@@ -177,47 +177,20 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           );
       }
 
-      // 6. Promotional Rule: 1 complimentary Evo-Bottle per Evo-Air Device (Early Season Offer)
-      const deviceCount = items.reduce((acc, item) => {
-        const v = variantMap.get(item.variantId);
-        return v?.productSlug === 'evoair' ? acc + (item.quantity || 1) : acc;
-      }, 0);
-
-      let remainingFreeBottles = deviceCount;
+      // 6. Calculate Line Totals & Pending Order Items
       const pendingItemsToInsert = [];
       let subtotal_paise = 0;
 
       for (const item of items) {
         const v = variantMap.get(item.variantId);
-        const isBottle =
-          v?.productSlug === 'evo-bottles' ||
-          v?.sku?.includes('BTL') ||
-          v?.sku?.includes('BOTTLE');
         const qty = item.quantity || 1;
 
-        let freeQty = 0;
-        if (isBottle && remainingFreeBottles > 0) {
-          freeQty = Math.min(qty, remainingFreeBottles);
-          remainingFreeBottles -= freeQty;
-        }
-        const paidQty = qty - freeQty;
-
-        if (freeQty > 0) {
-          pendingItemsToInsert.push({
-            variant_id: item.variantId,
-            quantity: freeQty,
-            unit_price_paise: 0,
-          });
-        }
-
-        if (paidQty > 0) {
-          pendingItemsToInsert.push({
-            variant_id: item.variantId,
-            quantity: paidQty,
-            unit_price_paise: v.pricePaise,
-          });
-          subtotal_paise += v.pricePaise * paidQty;
-        }
+        pendingItemsToInsert.push({
+          variant_id: item.variantId,
+          quantity: qty,
+          unit_price_paise: v.pricePaise,
+        });
+        subtotal_paise += v.pricePaise * qty;
       }
 
       const shipping_paise = subtotal_paise > 0 ? SHIPPING_FLAT_PAISE : 0;

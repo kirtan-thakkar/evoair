@@ -20,7 +20,7 @@ import { defaultShadeByFormula, fillFormulas } from '../data/productOptions';
 
 const PRODUCT_TABS = [
   { id: 'evoair', label: 'Evo-Air Device', hasLogo: true },
-  { id: 'evofills', label: 'Evo-Fills Refills' },
+  { id: 'evofills', label: 'Evo-Fills Prefills' },
   { id: 'evobottles', label: 'Evo-Bottles' }
 ];
 
@@ -199,8 +199,8 @@ const Products = () => {
               >
                 {activeProduct === 'evofills' ? (
                   <>
-                    <div className="ck-title">Evo-Fills</div>
-                    <div className="ck-subtitle-line">Blush Beyond Beauty</div>
+                    <div className="ck-title">Evo-Fills Prefills</div>
+                    <div className="ck-subtitle-line">Pre-Filled Plug & Play Capsules.</div>
                     <div className="ck-mobile-product-visual">
                       <div className="evofill-interactive-wrapper">
                         <svg viewBox="0 0 724 1024" className="evofill-svg-stage" xmlns="http://www.w3.org/2000/svg">
@@ -216,7 +216,7 @@ const Products = () => {
                       </div>
                     </div>
                     <p className="ck-desc">
-                      Powered by precision beauty technology, this next-generation liquid blush delivers controlled, even color with every application. Its advanced lightweight formula blends effortlessly into the skin, creating a seamless, airbrushed flush that looks naturally diffused.
+                      Powered by precision beauty technology, Evo-Fills are sterile pre-filled capsules engineered for zero contamination and instant application. No pouring required—simply click directly into your Evo-Air device for a seamless, airbrushed mist.
                     </p>
                     <div className="ck-price-block">
                       <span className="ck-price">{selectedFormula.price}</span>
@@ -320,24 +320,6 @@ const Products = () => {
                     <div className="ck-price-block">
                       <span className="ck-price">₹1,799</span>
                       <span className="ck-price-note">Pack of 20 · Free shipping</span>
-                    </div>
-                    <div
-                      className="ck-promo-callout"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        margin: '10px 0 16px 0',
-                        padding: '8px 14px',
-                        background: 'rgba(66, 252, 255, 0.08)',
-                        border: '1px solid rgba(66, 252, 255, 0.25)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        color: '#42fcff',
-                        letterSpacing: '0.02em',
-                      }}
-                    >
-                      <span>✨ Early Season Launch: 1st Pack of Evo-Bottles Included FREE with any Evo-Air Device purchase</span>
                     </div>
                     <div className="ck-option-panel ck-fill-selector">
                       <div className="ck-option-kicker">Choose Foundation Shade (Pack of 20)</div>
@@ -457,7 +439,7 @@ const Products = () => {
                         ))}
                       </div>
                       <div className="ck-selection-summary">
-                        Selected: {selectedFormula.name} · {selectedShade.code} {selectedShade.name}
+                        Selected: Starter Fill · {selectedFormula.name} {selectedShade.code} {selectedShade.name} · Device (₹14,999) + Starter Bottle (₹1,799)
                       </div>
                     </div>
                     <div className="ck-hero-actions">
@@ -471,7 +453,7 @@ const Products = () => {
                             productId: '00000000-0000-4000-8000-000000000001',
                             isDevice: true,
                             name: 'Evo-Air Cordless Device',
-                            subtitle: `Includes EvoMix, Charging Cable & Travel Case · Starter Shade: ${selectedShade.code} ${selectedShade.name}`,
+                            subtitle: 'Includes Charging Cable & Travel Case',
                             formulaId: selectedFormula.id,
                             formulaName: selectedFormula.name,
                             shadeCode: selectedShade.code,
@@ -482,13 +464,13 @@ const Products = () => {
                             image: evoairRender,
                           });
 
-                          // Automatically bundle the 1 complimentary Evo-Bottle in the customer's selected shade
+                          // Automatically bundle the matching Evo-Bottle in the customer's selected shade
                           addToCart({
                             id: `evo-bottles-foundation-${selectedShade.code}`,
                             productSlug: 'evo-bottles',
                             productId: '00000000-0000-4000-8000-000000000003',
                             name: 'Evo-Bottle (Foundation)',
-                            subtitle: `Pack of 20 · Shade: ${selectedShade.code} ${selectedShade.name} · Complimentary with Device`,
+                            subtitle: `Pack of 20 · Shade: ${selectedShade.code} ${selectedShade.name}`,
                             formulaId: 'foundation',
                             formulaName: 'Foundation',
                             shadeCode: selectedShade.code,
@@ -496,13 +478,12 @@ const Products = () => {
                             shadeSwatch: selectedShade.color,
                             price: '₹1,799',
                             numericPrice: 1799,
-                            isComplimentaryWithDevice: true,
                             image: heroCapsules,
                           });
                           window.location.href = '/cart';
                         }}
                       >
-                        Add to Cart
+                        Add to Cart — ₹16,798
                       </MagneticButton>
                       <MagneticButton
                         className="btn-secondary"
