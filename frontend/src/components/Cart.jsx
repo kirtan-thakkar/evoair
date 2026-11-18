@@ -265,6 +265,229 @@ const Cart = () => {
                       displayName = formulaLabel ? `Evo-Bottles (${formulaLabel})` : 'Evo-Bottles';
                     }
 
+                    if (isComplimentary) {
+                      return (
+                        <div
+                          key={uniqueKey}
+                          className={`cart-complimentary-showcase ${isItemLoading ? 'is-mutating' : ''}`}
+                          style={{
+                            position: 'relative',
+                            background:
+                              'linear-gradient(135deg, rgba(66, 252, 255, 0.08) 0%, rgba(18, 18, 22, 0.95) 45%, rgba(6, 6, 8, 0.98) 100%)',
+                            border: '1px solid rgba(66, 252, 255, 0.35)',
+                            boxShadow:
+                              '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(66, 252, 255, 0.1)',
+                            borderRadius: '16px',
+                            padding: '22px',
+                            marginBottom: '20px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {/* Ambient Glow Gradient */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              right: 0,
+                              width: '180px',
+                              height: '180px',
+                              background: 'radial-gradient(circle, rgba(66, 252, 255, 0.15) 0%, transparent 70%)',
+                              pointerEvents: 'none',
+                            }}
+                          />
+
+                          {/* Top Banner Ribbon */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              paddingBottom: '14px',
+                              marginBottom: '16px',
+                              borderBottom: '1px solid rgba(66, 252, 255, 0.18)',
+                              flexWrap: 'wrap',
+                              gap: '8px',
+                            }}
+                          >
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '13px' }}>✨</span>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.12em',
+                                  color: '#42fcff',
+                                }}
+                              >
+                                Complimentary Starter Pack · Included With Device
+                              </span>
+                            </div>
+                            <span
+                              style={{
+                                padding: '3px 10px',
+                                background: 'rgba(66, 252, 255, 0.15)',
+                                border: '1px solid rgba(66, 252, 255, 0.45)',
+                                borderRadius: '20px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#42fcff',
+                                letterSpacing: '0.04em',
+                              }}
+                            >
+                              ₹0 · 100% COMPLIMENTARY
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div
+                              style={{
+                                width: '92px',
+                                height: '92px',
+                                borderRadius: '12px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                padding: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <img
+                                src={heroCapsules}
+                                alt="Evo-Bottles Complimentary Pack"
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </div>
+
+                            <div style={{ flex: 1, minWidth: '220px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.1em',
+                                      color: '#a0a0a5',
+                                      display: 'block',
+                                    }}
+                                  >
+                                    Starter Formula Capsules
+                                  </span>
+                                  <h3
+                                    style={{
+                                      fontSize: '17px',
+                                      fontWeight: 600,
+                                      color: '#ffffff',
+                                      margin: '2px 0 0 0',
+                                    }}
+                                  >
+                                    Evo-Bottle Foundation Pack (Pack of 20)
+                                  </h3>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`cart-remove-btn ${isItemLoading ? 'is-loading' : ''}`}
+                                  onClick={() => !isItemLoading && removeFromCart(item)}
+                                  disabled={isItemLoading}
+                                  aria-label="Remove item"
+                                  title="Remove complimentary item"
+                                >
+                                  {isItemLoading ? <span className="cart-btn-spinner" /> : '✕'}
+                                </button>
+                              </div>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  marginTop: '8px',
+                                  fontSize: '12px',
+                                }}
+                              >
+                                {swatchHex && (
+                                  <span
+                                    style={{
+                                      backgroundColor: swatchHex,
+                                      width: '12px',
+                                      height: '12px',
+                                      borderRadius: '50%',
+                                      display: 'inline-block',
+                                      border: '1px solid rgba(255, 255, 255, 0.5)',
+                                    }}
+                                  />
+                                )}
+                                <span style={{ fontWeight: 500, color: '#ffffff' }}>
+                                  Shade: {item.shade_code || item.shadeCode ? `${item.shade_code || item.shadeCode} · ` : ''}
+                                  {item.shade_name || item.shadeName || 'Selected Shade'}
+                                </span>
+                                <span style={{ color: '#555' }}>•</span>
+                                <span style={{ color: '#888' }}>Qty: {item.quantity || 1} Pack</span>
+                              </div>
+
+                              <p
+                                style={{
+                                  fontSize: '12px',
+                                  color: '#9e9ea5',
+                                  lineHeight: 1.5,
+                                  margin: '8px 0 12px 0',
+                                }}
+                              >
+                                Pre-matched to your personal complexion for flawless skincare atomization. Included complimentary with your Evo-Air device.
+                              </p>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  paddingTop: '10px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                  flexWrap: 'wrap',
+                                  gap: '8px',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                                  <span
+                                    style={{
+                                      fontSize: '13px',
+                                      color: '#71717a',
+                                      textDecoration: 'line-through',
+                                    }}
+                                  >
+                                    Original: ₹1,799
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '18px',
+                                      fontWeight: 700,
+                                      color: '#42fcff',
+                                      letterSpacing: '-0.02em',
+                                    }}
+                                  >
+                                    Cost: ₹0 (FREE)
+                                  </span>
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#42fcff',
+                                    letterSpacing: '0.04em',
+                                    textTransform: 'uppercase',
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  ✨ 100% Complimentary Benefit
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={uniqueKey}
@@ -521,7 +744,7 @@ const Cart = () => {
                     <div className="cart-summary-row cart-total-row">
                       <span>Total</span>
                       <span className={isMutating ? 'cart-price-updating' : ''}>
-                        {formattedPricing?.total || formatCurrency(finalTotal)}
+                        {formattedPricing?.total || formatCurrency(subtotal)}
                       </span>
                     </div>
                   </div>
