@@ -21,6 +21,7 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
     OWNER_EMAIL: z.string().email().default('kirtanthakkar30@gmail.com'),
     ADMIN_EMAILS: z.string().default('admin@evoair.in,kirtanthakkar30@gmail.com'),
+    SHIPPING_FEE_PAISE: z.coerce.number().default(0),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().default(587),
     SMTP_SECURE: z.coerce.boolean().default(false),

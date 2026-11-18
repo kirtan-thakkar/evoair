@@ -78,17 +78,23 @@ const seed = async () => {
       })
       .onConflictDoNothing({ target: products.slug });
 
-    // 3. Insert product: Evo-Bottles Empty
+    // 3. Insert product: Evo-Bottles
     await db
       .insert(products)
       .values({
         id: SEED_PRODUCT_IDS.EVO_BOTTLES,
-        name: 'Evo-Bottles Empty',
+        name: 'Evo-Bottles',
         slug: 'evo-bottles',
-        description: 'Pack of 20 empty refillable capsules compatible with your personal formulas.',
+        description: 'Pack of 20 refillable capsules compatible with your personal formulas.',
         is_active: true,
       })
-      .onConflictDoNothing({ target: products.slug });
+      .onConflictDoUpdate({
+        target: products.slug,
+        set: {
+          name: 'Evo-Bottles',
+          description: 'Pack of 20 refillable capsules compatible with your personal formulas.',
+        },
+      });
 
     const allVariants = [];
 
@@ -199,12 +205,60 @@ const seed = async () => {
       stock_qty: 50,
     });
 
-    // ── Evo-Bottles Empty (Pack of 20, ₹1,799) ──
+    // ── Evo-Bottles Foundation Variants (10 shades, ₹1,799) ──
+    FOUNDATION_SHADES.forEach((s, idx) => {
+      const numStr = String(idx + 1).padStart(2, '0');
+      allVariants.push({
+        id: `33333333-3333-4333-8333-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
+        formula: 'foundation',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `BTL-FND-${s.code}`,
+        price_paise: 179900,
+        stock_qty: 60,
+      });
+    });
+
+    // ── Evo-Bottles Blush Variants (5 shades, ₹1,799) ──
+    BLUSH_SHADES.forEach((s, idx) => {
+      const numStr = String(11 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `33333333-3333-4333-8333-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
+        formula: 'blush',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `BTL-BLUSH-${s.code}`,
+        price_paise: 179900,
+        stock_qty: 50,
+      });
+    });
+
+    // ── Evo-Bottles Highlighter Variants (5 shades, ₹1,799) ──
+    HIGHLIGHTER_SHADES.forEach((s, idx) => {
+      const numStr = String(21 + idx).padStart(2, '0');
+      allVariants.push({
+        id: `33333333-3333-4333-8333-0000000000${numStr}`,
+        product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
+        formula: 'highlighter',
+        shade_name: s.name,
+        shade_code: s.code,
+        color_hex: s.color,
+        sku: `BTL-HL-${s.code}`,
+        price_paise: 179900,
+        stock_qty: 45,
+      });
+    });
+
+    // ── Evo-Bottles Standard Pack of 20 (₹1,799) ──
     allVariants.push({
       id: '11111111-1111-4111-8111-000000000052',
       product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
       formula: 'accessories',
-      shade_name: 'Empty Capsules (Pack of 20)',
+      shade_name: 'Capsules (Pack of 20)',
       shade_code: 'BOTTLE-20',
       color_hex: '#ffffff',
       sku: 'EVO-BOTTLE-20',

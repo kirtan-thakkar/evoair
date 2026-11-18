@@ -4,8 +4,9 @@ import * as cartController from '../controllers/cartController.js';
 
 const router = express.Router();
 
-// Public calculation endpoint: calculates server pricing for guest items
+// Public calculation endpoints: calculates server pricing for guest items
 router.post('/calculate', cartController.calculateCart);
+router.post('/pricing', cartController.calculateCart);
 
 // Protected routes (Customer authentication required)
 router.use(authenticate);

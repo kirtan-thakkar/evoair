@@ -27,7 +27,7 @@ export const calculatePricing = (items = []) => {
     total_count += item.quantity || 0;
   }
 
-  const shipping_fee_paise = subtotal_paise > 0 ? Number(process.env.SHIPPING_FEE_PAISE ?? 15000) : 0;
+  const shipping_fee_paise = subtotal_paise > 0 ? Number(process.env.SHIPPING_FEE_PAISE ?? 0) : 0;
   const total_paise = subtotal_paise + shipping_fee_paise;
 
   return {

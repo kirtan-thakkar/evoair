@@ -21,7 +21,7 @@ import { defaultShadeByFormula, fillFormulas } from '../data/productOptions';
 const PRODUCT_TABS = [
   { id: 'evoair', label: 'Evo-Air Device', hasLogo: true },
   { id: 'evofills', label: 'Evo-Fills Refills' },
-  { id: 'evobottles', label: 'Evo-Bottles Empty' }
+  { id: 'evobottles', label: 'Evo-Bottles' }
 ];
 
 // Preserved for cart and accessory flows
@@ -279,6 +279,8 @@ const Products = () => {
                           const numPrice = parseInt(selectedFormula.price.replace(/[^\d]/g, ''), 10) || 2500;
                           addToCart({
                             id: `evofills-${selectedFormula.id}-${selectedShade.code}`,
+                            productSlug: 'evo-fills',
+                            productId: '00000000-0000-4000-8000-000000000002',
                             name: `Evo-Fills Refill (${selectedFormula.name})`,
                             subtitle: `Shade: ${selectedShade.code} ${selectedShade.name} · 10 Pre-filled Capsules`,
                             formulaId: selectedFormula.id,
@@ -314,15 +316,58 @@ const Products = () => {
                       <img src={heroCapsules} alt="Evo-Bottles Product" className="ck-product-img" />
                     </div>
                     <p className="ck-desc">
-                      Professional-grade, empty, and reusable refill capsules for your Evo-Air device. Mix your own foundations, serums, or sunscreens and transform them into a micro-fine airbrush mist for a flawless finish.
+                      Professional-grade, refillable capsules for your Evo-Air device. Select your intended formula consistency and personal shade profile for customized atomization and flawless skincare blending.
                     </p>
                     <div className="ck-price-block">
                       <span className="ck-price">₹1,799</span>
                       <span className="ck-price-note">Pack of 20 · Free shipping</span>
                     </div>
                     <div className="ck-option-panel ck-fill-selector">
-                      <div className="ck-selection-summary" style={{ marginTop: 0 }}>
-                        Pack of 20 empty capsules · Compatible with all liquid foundations & formulas
+                      <div className="ck-option-kicker">Choose Formula</div>
+                      <div className="ck-segment-row">
+                        {fillFormulas.map(formula => {
+                          const isSelected = selectedFormulaId === formula.id;
+                          return (
+                            <button
+                              key={formula.id}
+                              type="button"
+                              className={`ck-segment-choice${isSelected ? ' is-selected' : ''}`}
+                              onClick={() => setSelectedFormulaId(formula.id)}
+                              aria-pressed={isSelected}
+                              style={{ position: 'relative' }}
+                            >
+                              {isSelected && (
+                                <motion.span
+                                  layoutId="active-bottles-formula-pill"
+                                  className="ck-pill-active-bg"
+                                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                                />
+                              )}
+                              <span className="ck-tab-btn-text" style={{ position: 'relative', zIndex: 1 }}>{formula.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="ck-option-kicker">Choose Shade</div>
+                      <div className="ck-shade-grid">
+                        {selectedFormula.shades.map(shade => (
+                          <button
+                            key={shade.code}
+                            type="button"
+                            className={`ck-shade-choice${selectedShade.code === shade.code ? ' is-selected' : ''}`}
+                            onClick={() => setSelectedShadeByFormula(prev => ({ ...prev, [selectedFormulaId]: shade }))}
+                            aria-pressed={selectedShade.code === shade.code}
+                          >
+                            <span className="ck-shade-swatch" style={{ '--swatch': shade.color }} />
+                            <span className="ck-shade-copy">
+                              <span className="ck-shade-code">{shade.code}</span>
+                              <span className="ck-shade-name">{shade.name}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ck-selection-summary">
+                        Selected: Pack of 20 · {selectedFormula.name} · {selectedShade.code} {selectedShade.name}
                       </div>
                     </div>
                     <div className="ck-hero-actions">
@@ -331,9 +376,16 @@ const Products = () => {
                         onClick={(e) => {
                           e.preventDefault();
                           addToCart({
-                            id: 'evo-bottles-empty-pack',
-                            name: 'Evo-Bottles Refill Capsules',
-                            subtitle: 'Pack of 20 empty refillable capsules',
+                            id: `evo-bottles-${selectedFormula.id}-${selectedShade.code}`,
+                            productSlug: 'evo-bottles',
+                            productId: '00000000-0000-4000-8000-000000000003',
+                            name: `Evo-Bottles (${selectedFormula.name})`,
+                            subtitle: `Pack of 20 · Shade: ${selectedShade.code} ${selectedShade.name}`,
+                            formulaId: selectedFormula.id,
+                            formulaName: selectedFormula.name,
+                            shadeCode: selectedShade.code,
+                            shadeName: selectedShade.name,
+                            shadeSwatch: selectedShade.color,
                             price: '₹1,799',
                             numericPrice: 1799,
                             image: heroCapsules,
@@ -423,6 +475,9 @@ const Products = () => {
                           e.preventDefault();
                           addToCart({
                             id: 'evo-air-device',
+                            productSlug: 'evoair',
+                            productId: '00000000-0000-4000-8000-000000000001',
+                            isDevice: true,
                             name: 'Evo-Air Cordless Device',
                             subtitle: `Includes EvoMix, Charging Cable & Travel Case · Starter Shade: ${selectedShade.code} ${selectedShade.name}`,
                             formulaId: selectedFormula.id,

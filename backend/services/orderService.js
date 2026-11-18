@@ -5,8 +5,8 @@ import { AppError, NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import * as emailService from './emailService.js';
 
-// Flat delivery fee (configurable via SHIPPING_FEE_PAISE, default ₹150)
-const SHIPPING_FLAT_PAISE = Number(process.env.SHIPPING_FEE_PAISE ?? 15000);
+// Complimentary free delivery by default (configurable via SHIPPING_FEE_PAISE, default ₹0)
+const SHIPPING_FLAT_PAISE = Number(process.env.SHIPPING_FEE_PAISE ?? 0);
 
 /**
  * Calculates dynamic expected delivery date: 5 business days (skipping Sundays)

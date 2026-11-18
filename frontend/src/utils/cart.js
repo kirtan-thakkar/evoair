@@ -42,32 +42,158 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Maps frontend shade/accessory data dynamically to PostgreSQL variant UUID
+ * Maps frontend shade/accessory data dynamically to PostgreSQL variant UUID.
+ * Strictly scopes matching to the target product (EvoAir vs Evo-Fills vs Evo-Bottles)
+ * so refill/bottle shades never accidentally resolve to the ₹14,999 device variant.
  */
 export const resolveVariantId = (item) => {
   if (!item) return null;
-  if (item.variantId && typeof item.variantId === 'string' && item.variantId.length >= 30) {
+  if (item.variantId && typeof item.variantId === 'string' && item.variantId.length >= 30 && UUID_REGEX.test(item.variantId)) {
     return item.variantId;
   }
-  if (item.variant_id && typeof item.variant_id === 'string' && item.variant_id.length >= 30) {
+  if (item.variant_id && typeof item.variant_id === 'string' && item.variant_id.length >= 30 && UUID_REGEX.test(item.variant_id)) {
     return item.variant_id;
   }
 
-  // Look up in live catalog if loaded
+  // 1. Identify target product slug
+  let targetSlug = item.productSlug || item.product_slug;
+  if (!targetSlug) {
+    const id = String(item.id || item.productId || '').toLowerCase();
+    const name = String(item.name || item.product_name || '').toLowerCase();
+    if (id.startsWith('evofills') || id.includes('fill') || name.includes('evo-fills') || name.includes('refill')) {
+      targetSlug = 'evo-fills';
+    } else if (id.startsWith('evo-bottles') || id.includes('bottle') || name.includes('evo-bottles')) {
+      targetSlug = 'evo-bottles';
+    } else if (id.startsWith('evo-air') || id === 'evoair' || name.includes('evo-air') || name.includes('evoair') || item.isDevice) {
+      targetSlug = 'evoair';
+    }
+  }
+
+  const shade = item.shadeCode || item.shade_code;
+  const formula = (item.formulaId || item.formula || '').toLowerCase();
+  const sku = item.sku;
+
+  // 2. Query in live in-memory catalog
   if (catalogCache && catalogCache.length > 0) {
-    for (const prod of catalogCache) {
-      if (!prod.variants) continue;
-      for (const v of prod.variants) {
-        if (item.shadeCode && v.shade_code === item.shadeCode) return v.id;
-        if (item.shade_code && v.shade_code === item.shade_code) return v.id;
-        if (item.shadeName && v.shade_name?.toLowerCase() === item.shadeName?.toLowerCase()) return v.id;
-        if (item.shade_name && v.shade_name?.toLowerCase() === item.shade_name?.toLowerCase()) return v.id;
-        if (item.sku && v.sku === item.sku) return v.id;
-        if (item.id === 'evofills' && v.sku?.includes('FILL')) return v.id;
-        if (item.id === 'evo-bottles-empty-pack' && v.sku?.includes('BOTTLE')) return v.id;
-        if (item.id === 'evoair' && v.shade_code === (item.shadeCode || item.shade_code || '02')) return v.id;
+    const targetProducts = targetSlug
+      ? catalogCache.filter((p) => p.slug === targetSlug)
+      : catalogCache;
+
+    for (const prod of targetProducts) {
+      if (!prod.variants || !prod.variants.length) continue;
+
+      // Exact Match: SKU
+      if (sku) {
+        const match = prod.variants.find((v) => v.sku === sku);
+        if (match) return match.id;
+      }
+
+      // Exact Match: formula AND shade_code
+      if (formula && shade) {
+        const match = prod.variants.find(
+          (v) => v.formula?.toLowerCase() === formula && v.shade_code === shade
+        );
+        if (match) return match.id;
+      }
+
+      // Match: shade_code within target product
+      if (shade) {
+        const match = prod.variants.find((v) => v.shade_code === shade);
+        if (match) return match.id;
+      }
+
+      // Accessory / Pack fallbacks
+      if (prod.slug === 'evo-bottles') {
+        const match = prod.variants.find((v) => v.sku?.includes('BOTTLE'));
+        if (match && !shade) return match.id;
+      }
+      if (prod.slug === 'evo-fills') {
+        const match = prod.variants.find((v) => v.sku?.includes('FILL'));
+        if (match && !shade) return match.id;
       }
     }
+  }
+
+  // 3. Fallback mappings for offline / pre-catalog bootstrapping
+  if (targetSlug === 'evo-fills') {
+    const fndMap = {
+      '02': '22222222-2222-4222-8222-000000000001',
+      '03': '22222222-2222-4222-8222-000000000002',
+      '06': '22222222-2222-4222-8222-000000000003',
+      '07': '22222222-2222-4222-8222-000000000004',
+      '10': '22222222-2222-4222-8222-000000000005',
+      '11': '22222222-2222-4222-8222-000000000006',
+      '14': '22222222-2222-4222-8222-000000000007',
+      '15': '22222222-2222-4222-8222-000000000008',
+      '18': '22222222-2222-4222-8222-000000000009',
+      '19': '22222222-2222-4222-8222-000000000010',
+      'B01': '22222222-2222-4222-8222-000000000011',
+      'B02': '22222222-2222-4222-8222-000000000012',
+      'B03': '22222222-2222-4222-8222-000000000013',
+      'B04': '22222222-2222-4222-8222-000000000014',
+      'B05': '22222222-2222-4222-8222-000000000015',
+      'H01': '22222222-2222-4222-8222-000000000021',
+      'H02': '22222222-2222-4222-8222-000000000022',
+      'H03': '22222222-2222-4222-8222-000000000023',
+      'H04': '22222222-2222-4222-8222-000000000024',
+      'H05': '22222222-2222-4222-8222-000000000025',
+    };
+    if (shade && fndMap[shade]) return fndMap[shade];
+    return '11111111-1111-4111-8111-000000000051';
+  }
+
+  if (targetSlug === 'evo-bottles') {
+    const btlMap = {
+      '02': '33333333-3333-4333-8333-000000000001',
+      '03': '33333333-3333-4333-8333-000000000002',
+      '06': '33333333-3333-4333-8333-000000000003',
+      '07': '33333333-3333-4333-8333-000000000004',
+      '10': '33333333-3333-4333-8333-000000000005',
+      '11': '33333333-3333-4333-8333-000000000006',
+      '14': '33333333-3333-4333-8333-000000000007',
+      '15': '33333333-3333-4333-8333-000000000008',
+      '18': '33333333-3333-4333-8333-000000000009',
+      '19': '33333333-3333-4333-8333-000000000010',
+      'B01': '33333333-3333-4333-8333-000000000011',
+      'B02': '33333333-3333-4333-8333-000000000012',
+      'B03': '33333333-3333-4333-8333-000000000013',
+      'B04': '33333333-3333-4333-8333-000000000014',
+      'B05': '33333333-3333-4333-8333-000000000015',
+      'H01': '33333333-3333-4333-8333-000000000021',
+      'H02': '33333333-3333-4333-8333-000000000022',
+      'H03': '33333333-3333-4333-8333-000000000023',
+      'H04': '33333333-3333-4333-8333-000000000024',
+      'H05': '33333333-3333-4333-8333-000000000025',
+    };
+    if (shade && btlMap[shade]) return btlMap[shade];
+    return '11111111-1111-4111-8111-000000000052';
+  }
+
+  if (targetSlug === 'evoair') {
+    const devMap = {
+      '02': '11111111-1111-4111-8111-000000000001',
+      '03': '11111111-1111-4111-8111-000000000002',
+      '06': '11111111-1111-4111-8111-000000000003',
+      '07': '11111111-1111-4111-8111-000000000004',
+      '10': '11111111-1111-4111-8111-000000000005',
+      '11': '11111111-1111-4111-8111-000000000006',
+      '14': '11111111-1111-4111-8111-000000000007',
+      '15': '11111111-1111-4111-8111-000000000008',
+      '18': '11111111-1111-4111-8111-000000000009',
+      '19': '11111111-1111-4111-8111-000000000010',
+      'B01': '11111111-1111-4111-8111-000000000011',
+      'B02': '11111111-1111-4111-8111-000000000012',
+      'B03': '11111111-1111-4111-8111-000000000013',
+      'B04': '11111111-1111-4111-8111-000000000014',
+      'B05': '11111111-1111-4111-8111-000000000015',
+      'H01': '11111111-1111-4111-8111-000000000021',
+      'H02': '11111111-1111-4111-8111-000000000022',
+      'H03': '11111111-1111-4111-8111-000000000023',
+      'H04': '11111111-1111-4111-8111-000000000024',
+      'H05': '11111111-1111-4111-8111-000000000025',
+    };
+    if (shade && devMap[shade]) return devMap[shade];
+    return '11111111-1111-4111-8111-000000000001';
   }
 
   return item.variantId || item.variant_id || (UUID_REGEX.test(item.id) ? item.id : null);
