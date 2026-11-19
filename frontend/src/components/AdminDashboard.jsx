@@ -22,6 +22,7 @@ export const AdminDashboard = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [toast, setToast] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   // Debounce live search input by 250ms
   useEffect(() => {
@@ -84,6 +85,83 @@ export const AdminDashboard = () => {
       fetchOrders();
     }
   }, [user, fetchKpis, fetchOrders]);
+
+  // Periodic Auto-Refresh (every 30 seconds when enabled)
+  useEffect(() => {
+    if (!autoRefresh || !user || user.role !== 'admin') return;
+    const interval = setInterval(() => {
+      fetchKpis();
+      fetchOrders();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, user, fetchKpis, fetchOrders]);
+
+  // One-Click CSV Export for Fulfillment & Courier Dispatch
+  const handleExportCsv = () => {
+    if (!orders.length) return;
+    const headers = [
+      'Order Number',
+      'Placed At',
+      'Status',
+      'Customer Name',
+      'Customer Email',
+      'Customer Phone',
+      'Address Line 1',
+      'Address Line 2',
+      'City',
+      'State',
+      'Pincode',
+      'Item Summary',
+      'Subtotal (INR)',
+      'Shipping (INR)',
+      'Total (INR)',
+    ];
+
+    const escapeCsv = (str) => {
+      if (str === null || str === undefined) return '""';
+      const s = String(str).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const rows = orders.map((o) => {
+      const addr = o.shipping_address || {};
+      const itemsSummary = (o.items || [])
+        .map(
+          (i) =>
+            `${i.product_name || 'Evo-Air'}${i.shade_name ? ` (${i.shade_name})` : ''} x${i.quantity || 1}`
+        )
+        .join('; ');
+
+      return [
+        escapeCsv(o.order_number),
+        escapeCsv(o.created_at ? new Date(o.created_at).toLocaleString('en-IN') : ''),
+        escapeCsv(o.status),
+        escapeCsv(o.customer?.name || addr.name || ''),
+        escapeCsv(o.customer?.email || ''),
+        escapeCsv(o.customer?.phone || addr.phone || ''),
+        escapeCsv(addr.line1 || ''),
+        escapeCsv(addr.line2 || ''),
+        escapeCsv(addr.city || ''),
+        escapeCsv(addr.state || ''),
+        escapeCsv(addr.pincode || ''),
+        escapeCsv(itemsSummary),
+        escapeCsv(Math.round((o.subtotal_paise || 0) / 100)),
+        escapeCsv(Math.round((o.shipping_paise || 0) / 100)),
+        escapeCsv(Math.round((o.total_paise || 0) / 100)),
+      ].join(',');
+    });
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\n'));
+    const link = document.createElement('a');
+    link.setAttribute('href', csvContent);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `evoluir-orders-${activeStatus}-${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${orders.length} orders to CSV`);
+  };
 
   // Handle Manual Order State Transitions
   const handleUpdateStatus = async (orderId, orderNumber, nextStatus) => {
@@ -337,9 +415,41 @@ export const AdminDashboard = () => {
         </div>
 
         {/* Orders Header */}
-        <div className="admin-view-title">
-          <span>Orders Management</span>
-          <span className="sub-count">({orders.length} orders displayed)</span>
+        <div className="admin-view-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <span>Orders Management</span>
+            <span className="sub-count">({orders.length} orders displayed)</span>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <label className="admin-autorefresh-toggle" title="Auto-refresh orders every 30 seconds">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                style={{ accentColor: '#42fcff', cursor: 'pointer' }}
+              />
+              <span
+                className={autoRefresh ? 'admin-live-pulse' : ''}
+                style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: autoRefresh ? '#42fcff' : '#666',
+                }}
+              />
+              <span>Live Auto-Sync (30s)</span>
+            </label>
+            <button
+              type="button"
+              className="admin-export-btn"
+              onClick={handleExportCsv}
+              disabled={!orders.length}
+              title="Export displayed orders to CSV spreadsheet"
+            >
+              📥 Export CSV
+            </button>
+          </div>
         </div>
 
         {/* Orders List */}
@@ -431,10 +541,7 @@ export const AdminDashboard = () => {
                         {order.items?.map((item) => {
                           const itemRupees = Math.round((item.unit_price_paise || 0) / 100);
                           const totalItemRupees = itemRupees * (item.quantity || 1);
-                          const isComplimentary =
-                            (item.unit_price_paise === 0 || itemRupees === 0) &&
-                            (item.product_slug === 'evo-bottles' ||
-                              item.product_name?.toLowerCase().includes('bottle'));
+                          const isLegacyFree = item.unit_price_paise === 0 || itemRupees === 0;
 
                           return (
                             <div key={item.id} className="admin-item-row">
@@ -454,7 +561,7 @@ export const AdminDashboard = () => {
                                         {item.formula}
                                       </span>
                                     )}
-                                    {isComplimentary && (
+                                    {isLegacyFree && (
                                       <span
                                         style={{
                                           marginLeft: '6px',
@@ -467,7 +574,7 @@ export const AdminDashboard = () => {
                                           textTransform: 'uppercase',
                                         }}
                                       >
-                                        Free Promo
+                                        Complimentary
                                       </span>
                                     )}
                                   </div>
@@ -478,7 +585,7 @@ export const AdminDashboard = () => {
                                 </div>
                               </div>
                               <div className="admin-item-pricing">
-                                {isComplimentary ? (
+                                {isLegacyFree ? (
                                   <span style={{ color: '#42fcff', fontWeight: 600 }}>
                                     <s style={{ opacity: 0.5, marginRight: '4px', color: '#a0a0a5' }}>₹1,799</s>
                                     ₹0
