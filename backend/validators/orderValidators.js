@@ -16,12 +16,20 @@ export const orderAddressSchema = z.object({
   phone: z
     .string({ required_error: 'Phone number is required' })
     .trim()
-    .regex(/^(?:\+91|91)?[6-9]\d{9}$/, 'Invalid Indian phone number')
-    .transform((val) => {
-      // Normalize to 10 digits (strip +91 or 91)
-      const match = val.match(/([6-9]\d{9})$/);
-      return match ? match[1] : val;
-    }),
+    .transform((val) => val.replace(/[\s\-\(\)\.]/g, ''))
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^(?:\+91|91|0)?[6-9]\d{9}$/,
+          'Invalid Indian mobile phone number (must be 10 digits starting with 6-9)'
+        )
+        .transform((val) => {
+          // Normalize to standard 10 digits (strip +91, 91, or 0)
+          const match = val.match(/([6-9]\d{9})$/);
+          return match ? match[1] : val;
+        })
+    ),
   line1: z
     .string({ required_error: 'Address line 1 is required' })
     .trim()
@@ -46,7 +54,12 @@ export const orderAddressSchema = z.object({
   pincode: z
     .string({ required_error: 'Pincode is required' })
     .trim()
-    .regex(/^[1-9]\d{5}$/, 'Pincode must be exactly 6 digits starting with 1-9'),
+    .transform((val) => val.replace(/\s+/g, ''))
+    .pipe(
+      z
+        .string()
+        .regex(/^[1-9]\d{5}$/, 'Pincode must be exactly 6 digits starting with 1-9')
+    ),
 });
 
 export const orderItemInputSchema = z.object({
