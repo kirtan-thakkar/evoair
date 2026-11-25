@@ -20,4 +20,10 @@ router.post('/create-order', paymentRateLimiter, authenticate, paymentController
 router.post('/verify', paymentRateLimiter, authenticate, paymentController.verifyPayment);
 router.post('/webhook', paymentController.handleWebhook);
 
+// PayU India Hosted Checkout & Webhook Routes
+router.post('/payu/initiate', paymentRateLimiter, authenticate, paymentController.initiatePayuPayment);
+router.post('/payu/callback', paymentController.handlePayuCallback);
+router.get('/payu/callback', paymentController.handlePayuCallback);
+router.post('/payu/webhook', paymentController.handlePayuWebhook);
+
 export default router;

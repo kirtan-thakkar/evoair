@@ -90,6 +90,12 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const searchParams = new URLSearchParams(window.location.search);
+    const status = searchParams.get('status');
+    const error = searchParams.get('error');
+    if (status === 'failed') {
+      setOrderError(error ? decodeURIComponent(error) : 'Payment was not completed. Please try again.');
+    }
   }, []);
 
   // Route Protection: /checkout is strictly for signed-in users. Redirect guests to home.
@@ -177,16 +183,53 @@ const CheckoutPage = () => {
         throw new Error(errorMsg);
       }
 
-      setOrderComplete(json.data.order);
-      logUserAction('order_placed', {
-        orderId: json.data?.order?.id,
-        orderNumber: json.data?.order?.order_number,
-        totalRupees: Math.round((json.data?.order?.total_paise || 0) / 100),
+      const createdOrder = json.data?.order;
+      if (!createdOrder?.id) {
+        throw new Error('Order creation did not return a valid order ID');
+      }
+
+      logUserAction('order_created', {
+        orderId: createdOrder.id,
+        orderNumber: createdOrder.order_number,
+        totalRupees: Math.round((createdOrder.total_paise || 0) / 100),
       });
+
+      // Initiate PayU Hosted Checkout session
+      const payuRes = await apiFetch('/api/v1/payments/payu/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId: createdOrder.id }),
+      });
+
+      const payuJson = await payuRes.json();
+      if (!payuRes.ok) {
+        throw new Error(payuJson.message || 'Failed to initialize PayU payment session');
+      }
+
+      const { actionUrl, params } = payuJson.data;
+
       if (typeof clearCart === 'function') {
         clearCart();
       }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Dynamically submit POST form to PayU Hosted Checkout portal
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = actionUrl;
+      form.style.display = 'none';
+
+      Object.entries(params).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = v ?? '';
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
     } catch (err) {
       setOrderError(err.message || 'Order placement failed');
     } finally {
@@ -465,10 +508,10 @@ const CheckoutPage = () => {
                       disabled={submitting || isBackendOffline || (!displayItems.length && !loadingCart)}
                     >
                       {submitting
-                        ? 'Placing Order...'
+                        ? 'Opening PayU Gateway...'
                         : isBackendOffline
                         ? 'Backend is currently down'
-                        : `Place Order & Confirm · ₹${totalAmountRupees.toLocaleString('en-IN')}`}
+                        : `Proceed to Pay with PayU · ₹${totalAmountRupees.toLocaleString('en-IN')}`}
                     </button>
                   </form>
                 </div>

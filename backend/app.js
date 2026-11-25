@@ -145,7 +145,7 @@ app.use(
     },
   })
 );
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 app.use(cookieParser());
 
 // 7. Response Compression

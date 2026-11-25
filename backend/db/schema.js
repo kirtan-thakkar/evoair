@@ -145,7 +145,10 @@ export const payments = pgTable('payments', {
   order_id: uuid('order_id')
     .references(() => orders.id)
     .notNull(),
-  razorpay_payment_id: varchar('razorpay_payment_id', { length: 255 }).notNull().unique(),
+  gateway: varchar('gateway', { length: 50 }).default('payu'),
+  transaction_id: varchar('transaction_id', { length: 255 }),
+  gateway_payment_id: varchar('gateway_payment_id', { length: 255 }),
+  razorpay_payment_id: varchar('razorpay_payment_id', { length: 255 }),
   status: varchar('status', { length: 50 }).notNull(),
   amount_paise: integer('amount_paise').notNull(),
   raw_payload: jsonb('raw_payload'),

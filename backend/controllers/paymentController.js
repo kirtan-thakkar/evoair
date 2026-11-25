@@ -52,3 +52,37 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     data: result,
   });
 });
+
+export const initiatePayuPayment = asyncHandler(async (req, res) => {
+  const { orderId } = validate(createPaymentOrderSchema, req.body);
+  const result = await paymentService.initiatePayuPayment(req.user.id, orderId);
+
+  res.status(200).json({
+    status: 'success',
+    data: result,
+  });
+});
+
+export const handlePayuCallback = asyncHandler(async (req, res) => {
+  const payload = req.body || {};
+  const result = await paymentService.handlePayuCallback(payload);
+
+  if (result.redirectUrl) {
+    return res.redirect(302, result.redirectUrl);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: result,
+  });
+});
+
+export const handlePayuWebhook = asyncHandler(async (req, res) => {
+  const payload = req.body || {};
+  const result = await paymentService.processPayuWebhook(payload);
+
+  res.status(200).json({
+    status: 'success',
+    data: result,
+  });
+});

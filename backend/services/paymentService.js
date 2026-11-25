@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { eq } from 'drizzle-orm';
 import { db } from '../config/db.js';
-import { orders, payments } from '../db/schema.js';
+import { orders, payments, users } from '../db/schema.js';
 import { env } from '../config/env.js';
 import { AppError, NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -355,4 +355,363 @@ export const processWebhook = async ({ rawBody, signature }) => {
   }
 
   return { received: true };
+};
+
+/**
+ * ── PayU India Integration ──
+ */
+
+/**
+ * Generates an outbound SHA-512 payment hash for PayU Hosted Checkout.
+ * Format: sha512(key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT)
+ */
+export const generatePayuPaymentHash = ({
+  key,
+  salt,
+  txnid,
+  amount,
+  productinfo,
+  firstname,
+  email,
+  udf1 = '',
+  udf2 = '',
+  udf3 = '',
+  udf4 = '',
+  udf5 = '',
+}) => {
+  const hashString = [
+    key,
+    txnid,
+    amount,
+    productinfo,
+    firstname,
+    email,
+    udf1,
+    udf2,
+    udf3,
+    udf4,
+    udf5,
+    '', // udf6
+    '', // udf7
+    '', // udf8
+    '', // udf9
+    '', // udf10
+    salt,
+  ].join('|');
+
+  return crypto.createHash('sha512').update(hashString, 'utf8').digest('hex').toLowerCase();
+};
+
+/**
+ * Validates the inbound reverse SHA-512 hash returned by PayU on callback/webhook.
+ * Format: sha512(SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
+ * Or with additionalCharges: sha512(additionalCharges|SALT|status|...)
+ */
+export const verifyPayuHash = (params, merchantSalt) => {
+  if (!params || !merchantSalt) return false;
+  const {
+    additionalCharges,
+    status = '',
+    udf10 = '',
+    udf9 = '',
+    udf8 = '',
+    udf7 = '',
+    udf6 = '',
+    udf5 = '',
+    udf4 = '',
+    udf3 = '',
+    udf2 = '',
+    udf1 = '',
+    email = '',
+    firstname = '',
+    productinfo = '',
+    amount = '',
+    txnid = '',
+    key = '',
+    hash: incomingHash = '',
+  } = params;
+
+  let hashSequence = [
+    merchantSalt,
+    status,
+    udf10,
+    udf9,
+    udf8,
+    udf7,
+    udf6,
+    udf5,
+    udf4,
+    udf3,
+    udf2,
+    udf1,
+    email,
+    firstname,
+    productinfo,
+    amount,
+    txnid,
+    key,
+  ].join('|');
+
+  if (additionalCharges) {
+    hashSequence = `${additionalCharges}|${hashSequence}`;
+  }
+
+  const calculatedHash = crypto.createHash('sha512').update(hashSequence, 'utf8').digest('hex').toLowerCase();
+  const incoming = (incomingHash || '').toLowerCase();
+
+  if (!incoming || calculatedHash.length !== incoming.length) {
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(Buffer.from(calculatedHash, 'utf8'), Buffer.from(incoming, 'utf8'));
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Initializes a PayU Hosted Checkout transaction for a pending order.
+ */
+export const initiatePayuPayment = async (userId, orderId) => {
+  const [order] = await db
+    .select({
+      id: orders.id,
+      order_number: orders.order_number,
+      user_id: orders.user_id,
+      status: orders.status,
+      total_paise: orders.total_paise,
+      shipping_address: orders.shipping_address,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) {
+    throw new NotFoundError('Order not found');
+  }
+
+  if (order.user_id !== userId) {
+    throw new ForbiddenError('You are not authorized to pay for this order');
+  }
+
+  if (order.status !== 'pending_payment') {
+    throw new AppError(`Order cannot be paid in current status: ${order.status}`, 400);
+  }
+
+  const merchantKey = env.PAYU_MERCHANT_KEY;
+  const merchantSalt = env.PAYU_MERCHANT_SALT;
+
+  if (!merchantKey || !merchantSalt) {
+    throw new AppError('PayU payment gateway is not properly configured on server', 500);
+  }
+
+  const [user] = await db
+    .select({ email: users.email, name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const shippingAddr = order.shipping_address || {};
+  const firstname = (shippingAddr.name || user?.name || 'Customer').trim().split(' ')[0] || 'Customer';
+  const email = (user?.email || 'customer@evoair.in').trim();
+  const phone = (shippingAddr.phone || '9999999999').trim();
+  const amount = (order.total_paise / 100).toFixed(2);
+  const txnid = order.order_number || `EVO-${order.id.slice(0, 8).toUpperCase()}-${Date.now()}`;
+  const productinfo = 'Evoluir Luxury Skincare & Cosmetics';
+
+  const backendPublicUrl = (env.BACKEND_PUBLIC_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const surl = `${backendPublicUrl}/api/v1/payments/payu/callback`;
+  const furl = `${backendPublicUrl}/api/v1/payments/payu/callback`;
+
+  const hash = generatePayuPaymentHash({
+    key: merchantKey,
+    salt: merchantSalt,
+    txnid,
+    amount,
+    productinfo,
+    firstname,
+    email,
+    udf1: order.id,
+  });
+
+  const payuBaseUrl =
+    env.PAYU_ENV === 'production'
+      ? 'https://secure.payu.in/_payment'
+      : 'https://test.payu.in/_payment';
+
+  logger.info({ orderId: order.id, txnid, amount }, '[PAYU] Generated hosted payment checkout session');
+
+  return {
+    actionUrl: payuBaseUrl,
+    params: {
+      key: merchantKey,
+      txnid,
+      amount,
+      productinfo,
+      firstname,
+      email,
+      phone,
+      surl,
+      furl,
+      hash,
+      udf1: order.id,
+    },
+  };
+};
+
+/**
+ * Handles PayU browser return callback (surl / furl POST).
+ */
+export const handlePayuCallback = async (params) => {
+  const merchantSalt = env.PAYU_MERCHANT_SALT;
+  const isHashValid = verifyPayuHash(params, merchantSalt);
+
+  const orderId = params.udf1;
+  const status = params.status;
+  const txnid = params.txnid;
+  const mihpayid = params.mihpayid;
+  const amount = params.amount;
+  const errorMessage = params.error_Message || params.error || 'Payment transaction failed or cancelled';
+
+  const frontendUrl = (env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+  if (!isHashValid) {
+    logger.warn({ params: { ...params, hash: '[REDACTED]' } }, '[PAYU] Invalid reverse hash detected in callback');
+    return {
+      redirectUrl: `${frontendUrl}/checkout?status=failed&error=tampered_response`,
+    };
+  }
+
+  if (status === 'success') {
+    logger.info({ orderId, txnid, mihpayid }, '[PAYU] Verified successful payment callback');
+
+    let order = null;
+    if (orderId) {
+      [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    } else if (txnid) {
+      [order] = await db.select().from(orders).where(eq(orders.order_number, txnid)).limit(1);
+    }
+
+    if (order) {
+      const amountPaise = Math.round(parseFloat(amount) * 100);
+      const paymentRecord = await db.transaction(async (tx) => {
+        let inserted = null;
+        if (mihpayid) {
+          const [existing] = await tx
+            .select({ id: payments.id })
+            .from(payments)
+            .where(eq(payments.gateway_payment_id, String(mihpayid)))
+            .limit(1);
+
+          if (!existing) {
+            [inserted] = await tx
+              .insert(payments)
+              .values({
+                order_id: order.id,
+                gateway: 'payu',
+                transaction_id: txnid,
+                gateway_payment_id: String(mihpayid),
+                status: 'captured',
+                amount_paise: amountPaise || order.total_paise,
+                raw_payload: params,
+              })
+              .returning();
+          }
+        }
+
+        await tx
+          .update(orders)
+          .set({ status: 'processing' })
+          .where(eq(orders.id, order.id));
+
+        return inserted;
+      });
+
+      await orderService.fulfillOrderPayment(order.id, paymentRecord);
+    }
+
+    return {
+      redirectUrl: `${frontendUrl}/orders?status=success&orderId=${order?.id || orderId}`,
+    };
+  }
+
+  logger.warn({ orderId, txnid, status, errorMessage }, '[PAYU] Unsuccessful payment callback');
+  return {
+    redirectUrl: `${frontendUrl}/checkout?status=failed&error=${encodeURIComponent(errorMessage)}`,
+  };
+};
+
+/**
+ * Handles PayU server-to-server webhook (successful, failed, refund).
+ */
+export const processPayuWebhook = async (payload) => {
+  const merchantSalt = env.PAYU_MERCHANT_SALT;
+  const isHashValid = verifyPayuHash(payload, merchantSalt);
+
+  if (!isHashValid) {
+    logger.warn('[PAYU_WEBHOOK] Invalid reverse hash detected in webhook');
+    throw new AppError('Invalid PayU webhook signature', 400);
+  }
+
+  const orderId = payload.udf1;
+  const txnid = payload.txnid;
+  const mihpayid = payload.mihpayid;
+  const status = payload.status;
+  const amount = payload.amount;
+
+  logger.info({ eventStatus: status, orderId, txnid, mihpayid }, '[PAYU_WEBHOOK] Processing verified webhook');
+
+  let order = null;
+  if (orderId) {
+    [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  } else if (txnid) {
+    [order] = await db.select().from(orders).where(eq(orders.order_number, txnid)).limit(1);
+  }
+
+  if (!order) {
+    logger.warn({ orderId, txnid }, '[PAYU_WEBHOOK] Order not found for webhook');
+    return { received: true, ignored: true, reason: 'order_not_found' };
+  }
+
+  if (status === 'success') {
+    const amountPaise = Math.round(parseFloat(amount) * 100);
+    const paymentRecord = await db.transaction(async (tx) => {
+      let inserted = null;
+      if (mihpayid) {
+        const [existing] = await tx
+          .select({ id: payments.id })
+          .from(payments)
+          .where(eq(payments.gateway_payment_id, String(mihpayid)))
+          .limit(1);
+
+        if (!existing) {
+          [inserted] = await tx
+            .insert(payments)
+            .values({
+              order_id: order.id,
+              gateway: 'payu',
+              transaction_id: txnid,
+              gateway_payment_id: String(mihpayid),
+              status: 'captured',
+              amount_paise: amountPaise || order.total_paise,
+              raw_payload: payload,
+            })
+            .returning();
+        }
+      }
+
+      await tx
+        .update(orders)
+        .set({ status: 'processing' })
+        .where(eq(orders.id, order.id));
+
+      return inserted;
+    });
+
+    await orderService.fulfillOrderPayment(order.id, paymentRecord);
+    return { received: true, fulfilled: true };
+  }
+
+  return { received: true, status };
 };
