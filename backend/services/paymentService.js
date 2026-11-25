@@ -555,7 +555,6 @@ export const initiatePayuPayment = async (userId, orderId) => {
       surl,
       furl,
       hash,
-      service_provider: 'payu_paisa',
       udf1: order.id,
     },
   };
@@ -579,8 +578,9 @@ export const handlePayuCallback = async (params) => {
 
   if (!isHashValid) {
     logger.warn({ params: { ...params, hash: '[REDACTED]' } }, '[PAYU] Invalid reverse hash detected in callback');
+    const returnError = params.error_Message || params.error || 'Payment verification failed';
     return {
-      redirectUrl: `${frontendUrl}/checkout?status=failed&error=tampered_response`,
+      redirectUrl: `${frontendUrl}/checkout?status=failed&error=${encodeURIComponent(returnError)}`,
     };
   }
 
