@@ -1974,9 +1974,10 @@ footer {
 }
 .ck-nav {
   z-index: 100;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(105%);
-  background: #0606067a;
-  border-bottom: 1px solid #ffffff1a;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(105%);
+  backdrop-filter: blur(28px) saturate(180%) contrast(105%);
+  background: rgba(6, 6, 6, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   justify-content: space-between;
   align-items: center;
   padding: 24px 50px;
@@ -3520,13 +3521,42 @@ footer {
 .cart-checkout-btn,
 .magnetic-button.cart-checkout-btn {
   width: 100% !important;
+  max-width: 100% !important;
   display: flex !important;
   align-items: center;
   justify-content: center;
   text-align: center;
   margin-top: 24px;
-  padding: 16px 24px;
+  padding: 18px 24px !important;
+  background: #ffffff !important;
+  color: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 9999px !important;
+  font-family: 'Satoshi-Variable', 'Satoshi', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  cursor: pointer;
   box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15) !important;
+}
+
+.cart-checkout-btn:hover:not(:disabled),
+.magnetic-button.cart-checkout-btn:hover:not(:disabled),
+.magnetic-button.cart-checkout-btn.hovered:not(:disabled) {
+  background: #f0f0f2 !important;
+  color: #050505 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 14px 40px rgba(255, 255, 255, 0.25) !important;
+}
+
+.cart-checkout-btn:disabled,
+.magnetic-button.cart-checkout-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
 }
 .cart-promo-form {
   gap: 8px;

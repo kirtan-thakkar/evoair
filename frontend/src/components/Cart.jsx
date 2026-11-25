@@ -244,7 +244,16 @@ const Cart = () => {
                       item.name?.includes('Evo-Bottle') ||
                       item.id?.startsWith('evo-bottles');
 
-                    const formulaLabel = item.formulaName || (item.formula ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1) : '');
+                    const formulaLabel =
+                      item.formulaName ||
+                      (item.formula ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1) : '') ||
+                      ((item.shadeCode || item.shade_code || '').startsWith('H') ? 'Highlighter' : '') ||
+                      ((item.shadeCode || item.shade_code || '').startsWith('B') ? 'Blush' : '') ||
+                      ((item.shadeCode || item.shade_code || '').match(/^\d+$/) ? 'Foundation' : '');
+                    const rawSubtitle = item.subtitle || '';
+                    const cleanSubtitle = rawSubtitle
+                      .replace(/pack of 20/gi, '1 Bottle')
+                      .replace(/pack of 10/gi, '10 Pre-filled Capsules');
                     const hasDeviceInCart = items.some(
                       (it) =>
                         it.product_slug === 'evoair' ||
@@ -327,7 +336,7 @@ const Cart = () => {
                           )}
 
                           {/* Specification Row for Refills and Bottles */}
-                          {(isEvoFills || isEvoBottles || !isEvoAirDevice) && (item.shade_name || item.shadeName || item.subtitle) && (
+                          {(isEvoFills || isEvoBottles || !isEvoAirDevice) && (item.shade_name || item.shadeName || cleanSubtitle) && (
                             <div className="cart-item-spec">
                               {swatchHex && (
                                 <span
@@ -338,7 +347,7 @@ const Cart = () => {
                               <span>
                                 {item.shade_name || item.shadeName
                                   ? `${item.shade_code || item.shadeCode ? `${item.shade_code || item.shadeCode} ` : ''}${item.shade_name || item.shadeName}${isEvoBottles ? ' · 1 Bottle' : isEvoFills ? ' · 10 Pre-filled Capsules' : ''}`
-                                  : item.subtitle}
+                                  : cleanSubtitle}
                               </span>
                             </div>
                           )}

@@ -218,7 +218,20 @@ export const getCart = () => {
         localStorage.removeItem(LEGACY_CART_KEY);
       }
     }
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => {
+        if (!item) return item;
+        const cleaned = { ...item };
+        if (typeof cleaned.subtitle === 'string') {
+          cleaned.subtitle = cleaned.subtitle
+            .replace(/pack of 20/gi, '1 Bottle')
+            .replace(/pack of 10/gi, '10 Pre-filled Capsules');
+        }
+        return cleaned;
+      });
+    }
+    return [];
   } catch (e) {
     console.error('Error reading cart from localStorage', e);
     return [];
