@@ -107,9 +107,38 @@ const CheckoutPage = () => {
 
   // Compute order items list with server pricing calculations
   const displayItems = serverCart?.items?.length ? serverCart.items : items;
-  const itemsSubtotalRupees = pricing?.subtotal_rupees ?? Math.round(subtotal);
-  const shippingFeeRupees = pricing?.shipping_fee_rupees ?? 0;
-  const totalAmountRupees = pricing?.total_rupees ?? (itemsSubtotalRupees + shippingFeeRupees);
+
+  // Defensive fallback calculation if pricing is loading or not yet computed
+  const fallbackSubtotal = (displayItems || []).reduce((sum, it) => {
+    if (it.is_complimentary || it.line_total_paise === 0) return sum;
+    const unitPrice =
+      it.price_rupees ||
+      (it.price_paise ? it.price_paise / 100 : 0) ||
+      it.numericPrice ||
+      0;
+    return sum + unitPrice * (it.quantity || 1);
+  }, 0);
+
+  const itemsSubtotalRupees =
+    typeof pricing?.subtotal_rupees === 'number' && !isNaN(pricing.subtotal_rupees) && pricing.subtotal_rupees > 0
+      ? pricing.subtotal_rupees
+      : typeof subtotal === 'number' && !isNaN(subtotal) && subtotal > 0
+      ? subtotal
+      : fallbackSubtotal;
+
+  const shippingFeeRupees =
+    typeof pricing?.shipping_fee_rupees === 'number' && !isNaN(pricing.shipping_fee_rupees)
+      ? pricing.shipping_fee_rupees
+      : typeof shippingFee === 'number' && !isNaN(shippingFee)
+      ? shippingFee
+      : 0;
+
+  const totalAmountRupees =
+    typeof pricing?.total_rupees === 'number' && !isNaN(pricing.total_rupees) && pricing.total_rupees > 0
+      ? pricing.total_rupees
+      : typeof finalTotal === 'number' && !isNaN(finalTotal) && finalTotal > 0
+      ? finalTotal
+      : itemsSubtotalRupees + shippingFeeRupees;
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -511,7 +540,7 @@ const CheckoutPage = () => {
                         ? 'Opening PayU Gateway...'
                         : isBackendOffline
                         ? 'Backend is currently down'
-                        : `Proceed to Pay with PayU · ₹${totalAmountRupees.toLocaleString('en-IN')}`}
+                        : `Proceed to Pay with PayU · ₹${(totalAmountRupees || 0).toLocaleString('en-IN')}`}
                     </button>
                   </form>
                 </div>
@@ -575,11 +604,11 @@ const CheckoutPage = () => {
                     <div className="checkout-totals-block">
                       <div className="checkout-total-line">
                         <span>Items Subtotal</span>
-                        <span>₹{itemsSubtotalRupees.toLocaleString('en-IN')}</span>
+                        <span>₹{(itemsSubtotalRupees || 0).toLocaleString('en-IN')}</span>
                       </div>
                       <div className="checkout-total-line">
                         <span>Standard Delivery</span>
-                        <span>₹{shippingFeeRupees.toLocaleString('en-IN')}</span>
+                        <span>₹{(shippingFeeRupees || 0).toLocaleString('en-IN')}</span>
                       </div>
                       <div className="checkout-total-line">
                         <span>Applicable Taxes (GST)</span>
@@ -590,7 +619,7 @@ const CheckoutPage = () => {
                     <div className="checkout-grand-total">
                       <span className="checkout-grand-total-label">Total Due</span>
                       <span className="checkout-grand-total-amount">
-                        ₹{totalAmountRupees.toLocaleString('en-IN')}
+                        ₹{(totalAmountRupees || 0).toLocaleString('en-IN')}
                       </span>
                     </div>
 

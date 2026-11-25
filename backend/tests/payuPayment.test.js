@@ -14,7 +14,7 @@ describe('PayU India Cryptographic Hash & Verification Engine', () => {
     salt: mockSalt,
     txnid: 'EVO-ORDER-001',
     amount: '14999.00',
-    productinfo: 'Evoluir Luxury Skincare & Cosmetics',
+    productinfo: 'Evoluir Luxury Skincare and Cosmetics',
     firstname: 'Kirtan',
     email: 'kirtan@example.com',
     udf1: 'order-uuid-12345',

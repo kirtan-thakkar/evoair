@@ -516,9 +516,9 @@ export const initiatePayuPayment = async (userId, orderId) => {
   const firstname = (shippingAddr.name || user?.name || 'Customer').trim().split(' ')[0] || 'Customer';
   const email = (user?.email || 'customer@evoair.in').trim();
   const phone = (shippingAddr.phone || '9999999999').trim();
-  const amount = (order.total_paise / 100).toFixed(2);
+  const amount = (Number(order.total_paise) / 100).toFixed(2);
   const txnid = order.order_number || `EVO-${order.id.slice(0, 8).toUpperCase()}-${Date.now()}`;
-  const productinfo = 'Evoluir Luxury Skincare & Cosmetics';
+  const productinfo = 'Evoluir Luxury Skincare and Cosmetics';
 
   const backendPublicUrl = (env.BACKEND_PUBLIC_URL || 'http://localhost:5000').replace(/\/$/, '');
   const surl = `${backendPublicUrl}/api/v1/payments/payu/callback`;
@@ -555,6 +555,7 @@ export const initiatePayuPayment = async (userId, orderId) => {
       surl,
       furl,
       hash,
+      service_provider: 'payu_paisa',
       udf1: order.id,
     },
   };
