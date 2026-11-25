@@ -245,11 +245,25 @@ const Cart = () => {
                       item.id?.startsWith('evo-bottles');
 
                     const formulaLabel = item.formulaName || (item.formula ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1) : '');
+                    const hasDeviceInCart = items.some(
+                      (it) =>
+                        it.product_slug === 'evoair' ||
+                        it.productSlug === 'evoair' ||
+                        it.productId === '00000000-0000-4000-8000-000000000001' ||
+                        it.name?.includes('Evo-Air') ||
+                        it.id === 'evo-air-device' ||
+                        Boolean(it.isDevice)
+                    );
                     const isComplimentary =
+                      hasDeviceInCart &&
                       isEvoBottles &&
                       (item.is_complimentary ||
                         (item.free_quantity && item.free_quantity > 0) ||
                         itemLineTotal === 0);
+                    const effectiveLineTotal =
+                      isEvoBottles && !hasDeviceInCart && itemLineTotal === 0
+                        ? (item.numericPrice || 1799) * (item.quantity || 1)
+                        : itemLineTotal;
 
                     let displayName = item.product_name || item.name;
                     if (isEvoAirDevice) {
@@ -397,7 +411,9 @@ const Cart = () => {
                               </div>
                             ) : (
                               <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
-                                {item.formatted_line_total || formatCurrency(itemLineTotal)}
+                                {effectiveLineTotal !== itemLineTotal
+                                  ? formatCurrency(effectiveLineTotal)
+                                  : (item.formatted_line_total || formatCurrency(effectiveLineTotal))}
                               </div>
                             )}
                           </div>

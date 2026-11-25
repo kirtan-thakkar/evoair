@@ -3517,6 +3517,17 @@ footer {
   font-size: 18px;
   font-weight: 600;
 }
+.cart-checkout-btn,
+.magnetic-button.cart-checkout-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-top: 24px;
+  padding: 16px 24px;
+  box-sizing: border-box;
+}
 .cart-promo-form {
   gap: 8px;
   margin-top: 24px;

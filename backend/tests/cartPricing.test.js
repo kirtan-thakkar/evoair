@@ -166,6 +166,28 @@ describe('Cart Pricing & Bundle Engine', () => {
     expect(res.pricing.total_rupees).toBe(14999 + 1799 + 2500);
   });
 
+  it('prevents ₹0 Evo-Bottle exploit when Evo-Air Device is removed from cart', async () => {
+    const res = await calculateGuestCart([
+      {
+        id: 'evo-bottles-blush-B03',
+        productSlug: 'evo-bottles',
+        formulaId: 'blush',
+        shadeCode: 'B03',
+        isComplimentaryWithDevice: true,
+        price_paise: 0,
+        quantity: 1,
+      },
+    ]);
+
+    expect(res.items).toHaveLength(1);
+    const bottleItem = res.items[0];
+    expect(bottleItem.is_complimentary).toBe(false);
+    expect(bottleItem.free_quantity).toBe(0);
+    expect(bottleItem.paid_quantity).toBe(1);
+    expect(bottleItem.line_total_paise).toBe(179900);
+    expect(res.pricing.total_rupees).toBe(1799);
+  });
+
   afterAll(async () => {
     await closeDb();
   });
