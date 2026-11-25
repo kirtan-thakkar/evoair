@@ -4,6 +4,7 @@ import MagneticButton from './MagneticButton';
 import BlackHole from './BlackHole';
 import newLogo from '../assets/new-logo.png';
 import heroCapsules from '../assets/hero-capsules.png';
+import evoairRender from '../assets/evoair-render.png';
 import { useCart } from '../utils/cart';
 import { AuthNavButton, AuthModal } from './AuthModal';
 import { useAuth } from '../context/AuthContext';
@@ -212,9 +213,12 @@ const Cart = () => {
                     const targetId = item.variant_id || item.variantId || item.id;
                     const isItemLoading = mutatingItemId === targetId || mutatingItemId === item.id || mutatingItemId === uniqueKey;
 
-                    const itemLineTotal = isServerCart && item.line_total_paise
-                      ? item.line_total_paise / 100
-                      : item.line_total_rupees || (item.numericPrice || 2800) * (item.quantity || 1);
+                    const itemLineTotal =
+                      item.line_total_paise !== undefined && item.line_total_paise !== null
+                        ? item.line_total_paise / 100
+                        : item.line_total_rupees !== undefined && item.line_total_rupees !== null
+                        ? item.line_total_rupees
+                        : (item.numericPrice || 1799) * (item.quantity || 1);
 
                     const swatchHex = item.color_hex || item.shadeSwatch;
 
@@ -223,7 +227,8 @@ const Cart = () => {
                       item.productSlug === 'evoair' ||
                       item.productId === '00000000-0000-4000-8000-000000000001' ||
                       item.name?.includes('Evo-Air') ||
-                      item.id === 'evo-air-device';
+                      item.id === 'evo-air-device' ||
+                      Boolean(item.isDevice);
 
                     const isEvoFills =
                       item.product_slug === 'evo-fills' ||
@@ -236,10 +241,15 @@ const Cart = () => {
                       item.product_slug === 'evo-bottles' ||
                       item.productSlug === 'evo-bottles' ||
                       item.productId === '00000000-0000-4000-8000-000000000003' ||
-                      item.name?.includes('Evo-Bottles') ||
+                      item.name?.includes('Evo-Bottle') ||
                       item.id?.startsWith('evo-bottles');
 
                     const formulaLabel = item.formulaName || (item.formula ? item.formula.charAt(0).toUpperCase() + item.formula.slice(1) : '');
+                    const isComplimentary =
+                      isEvoBottles &&
+                      (item.is_complimentary ||
+                        (item.free_quantity && item.free_quantity > 0) ||
+                        itemLineTotal === 0);
 
                     let displayName = item.product_name || item.name;
                     if (isEvoAirDevice) {
@@ -247,7 +257,7 @@ const Cart = () => {
                     } else if (isEvoFills) {
                       displayName = formulaLabel ? `Evo-Fills Prefill (${formulaLabel})` : 'Evo-Fills Prefills';
                     } else if (isEvoBottles) {
-                      displayName = formulaLabel ? `Evo-Bottle (${formulaLabel})` : 'Evo-Bottle (Foundation)';
+                      displayName = formulaLabel ? `Evo-Bottle (${formulaLabel})` : 'Evo-Bottle';
                     }
 
                     return (
@@ -257,7 +267,7 @@ const Cart = () => {
                       >
                         <div className="cart-item-thumb">
                           <img
-                            src={item.image || heroCapsules}
+                            src={item.image || (isEvoAirDevice ? evoairRender : heroCapsules)}
                             alt={displayName}
                             className="cart-item-img"
                           />
@@ -313,8 +323,32 @@ const Cart = () => {
                               )}
                               <span>
                                 {item.shade_name || item.shadeName
-                                  ? `${item.shade_code || item.shadeCode ? `${item.shade_code || item.shadeCode} ` : ''}${item.shade_name || item.shadeName}${isEvoBottles ? ' · Pack of 20' : isEvoFills ? ' · 10 Pre-filled Capsules' : ''}`
+                                  ? `${item.shade_code || item.shadeCode ? `${item.shade_code || item.shadeCode} ` : ''}${item.shade_name || item.shadeName}${isEvoBottles ? ' · 1 Bottle' : isEvoFills ? ' · 10 Pre-filled Capsules' : ''}`
                                   : item.subtitle}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Complimentary Offer Badge for Evo-Bottle */}
+                          {isComplimentary && (
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginTop: '6px',
+                                marginBottom: '4px',
+                                padding: '4px 10px',
+                                background: 'rgba(66, 252, 255, 0.08)',
+                                border: '1px solid rgba(66, 252, 255, 0.28)',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                color: '#42fcff',
+                                letterSpacing: '0.02em',
+                              }}
+                            >
+                              <span>
+                                ✨ {item.promo_badge || 'Complimentary with Evo-Air Device'}
                               </span>
                             </div>
                           )}
@@ -344,9 +378,28 @@ const Cart = () => {
                               </button>
                             </div>
 
-                            <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
-                              {item.formatted_line_total || formatCurrency(itemLineTotal)}
-                            </div>
+                            {isComplimentary ? (
+                              <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`} style={{ textAlign: 'right' }}>
+                                <span
+                                  style={{
+                                    textDecoration: 'line-through',
+                                    opacity: 0.5,
+                                    fontSize: '12px',
+                                    color: '#a0a0a5',
+                                    marginRight: '8px',
+                                  }}
+                                >
+                                  {item.formatted_original_line_total || formatCurrency(1799 * (item.quantity || 1))}
+                                </span>
+                                <span style={{ color: '#42fcff', fontWeight: 600 }}>
+                                  {itemLineTotal === 0 ? '₹0 · FREE' : (item.formatted_line_total || formatCurrency(itemLineTotal))}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className={`cart-item-price ${isItemLoading ? 'cart-price-updating' : ''}`}>
+                                {item.formatted_line_total || formatCurrency(itemLineTotal)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -395,7 +448,7 @@ const Cart = () => {
                         <span className="cart-kit-name">Evo-Bottles</span>
                       </div>
                       <p className="cart-kit-desc">
-                        Pack of 20 refillable capsules. Compatible with your own foundations and custom formulas.
+                        1 Refillable Bottle. Compatible with your own foundations and custom formulas.
                       </p>
                       <div className="cart-kit-foot">
                         <span className="cart-kit-price">₹1,799</span>
@@ -407,8 +460,8 @@ const Cart = () => {
                               id: 'evo-bottles-pack',
                               productSlug: 'evo-bottles',
                               productId: '00000000-0000-4000-8000-000000000003',
-                              name: 'Evo-Bottles Refill Pack',
-                              subtitle: 'Pack of 20 Capsules',
+                              name: 'Evo-Bottle',
+                              subtitle: '1 Refillable Bottle',
                               price: '₹1,799',
                               numericPrice: 1799,
                               image: heroCapsules,

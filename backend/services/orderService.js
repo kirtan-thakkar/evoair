@@ -37,19 +37,23 @@ export const calculateExpectedDeliveryDate = (startDate = new Date()) => {
   return d;
 };
 
+const sumQuantitiesByVariant = (list, keyField) => {
+  const counts = new Map();
+  for (const item of list) {
+    const vid = String(item[keyField]);
+    counts.set(vid, (counts.get(vid) || 0) + (item.quantity || 1));
+  }
+  return counts;
+};
+
 const areItemsMatching = (existingItems, requestedItems) => {
-  if (existingItems.length !== requestedItems.length) return false;
-  const sortedExisting = [...existingItems].sort((a, b) =>
-    String(a.variant_id).localeCompare(String(b.variant_id))
-  );
-  const sortedRequested = [...requestedItems].sort((a, b) =>
-    String(a.variantId).localeCompare(String(b.variantId))
-  );
-  return sortedExisting.every(
-    (item, index) =>
-      item.variant_id === sortedRequested[index].variantId &&
-      item.quantity === sortedRequested[index].quantity
-  );
+  const existingMap = sumQuantitiesByVariant(existingItems, 'variant_id');
+  const requestedMap = sumQuantitiesByVariant(requestedItems, 'variantId');
+  if (existingMap.size !== requestedMap.size) return false;
+  for (const [vid, qty] of requestedMap.entries()) {
+    if (existingMap.get(vid) !== qty) return false;
+  }
+  return true;
 };
 
 const findExistingOrderWithItems = async (queryDb, userId, idempotencyKey) => {
@@ -177,20 +181,47 @@ export const createOrder = async (userId, idempotencyKey, { items, shippingAddre
           );
       }
 
-      // 6. Calculate Line Totals & Pending Order Items
+      // 6. Promotional Rule: 1 complimentary Evo-Bottle (any shade) per Evo-Air Device
+      const deviceCount = items.reduce((acc, item) => {
+        const v = variantMap.get(item.variantId);
+        return v?.productSlug === 'evoair' ? acc + (item.quantity || 1) : acc;
+      }, 0);
+
+      let remainingFreeBottles = deviceCount;
       const pendingItemsToInsert = [];
       let subtotal_paise = 0;
 
       for (const item of items) {
         const v = variantMap.get(item.variantId);
+        const isBottle =
+          v?.productSlug === 'evo-bottles' ||
+          v?.sku?.includes('BTL') ||
+          v?.sku?.includes('BOTTLE');
         const qty = item.quantity || 1;
 
-        pendingItemsToInsert.push({
-          variant_id: item.variantId,
-          quantity: qty,
-          unit_price_paise: v.pricePaise,
-        });
-        subtotal_paise += v.pricePaise * qty;
+        let freeQty = 0;
+        if (isBottle && remainingFreeBottles > 0) {
+          freeQty = Math.min(qty, remainingFreeBottles);
+          remainingFreeBottles -= freeQty;
+        }
+        const paidQty = qty - freeQty;
+
+        if (freeQty > 0) {
+          pendingItemsToInsert.push({
+            variant_id: item.variantId,
+            quantity: freeQty,
+            unit_price_paise: 0,
+          });
+        }
+
+        if (paidQty > 0) {
+          pendingItemsToInsert.push({
+            variant_id: item.variantId,
+            quantity: paidQty,
+            unit_price_paise: v.pricePaise,
+          });
+          subtotal_paise += v.pricePaise * paidQty;
+        }
       }
 
       const shipping_paise = subtotal_paise > 0 ? SHIPPING_FLAT_PAISE : 0;

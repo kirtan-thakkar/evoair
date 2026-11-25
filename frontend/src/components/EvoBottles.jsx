@@ -52,7 +52,7 @@ const EvoBottles = () => {
           </p>
           <div className="ck-price-block">
             <span className="ck-price">₹1,799</span>
-            <span className="ck-price-note">Pack of 20 · Free shipping</span>
+            <span className="ck-price-note">1 Bottle · Free shipping</span>
           </div>
           <div className="ck-option-panel ck-fill-selector">
             <div className="ck-option-kicker">Choose Formula</div>

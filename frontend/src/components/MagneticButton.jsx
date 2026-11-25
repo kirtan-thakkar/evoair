@@ -1,13 +1,22 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { gsap } from 'gsap';
 
-const MagneticButton = ({ children, className = '', onClick, type = 'button', href }) => {
+const MagneticButton = ({
+  children,
+  className = '',
+  onClick,
+  type = 'button',
+  href,
+  style = {},
+  disabled = false,
+  ...rest
+}) => {
   const buttonRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const el = buttonRef.current;
-    if (!el) return;
+    if (!el || disabled) return;
 
     const handleMouseMove = (e) => {
       const rect = el.getBoundingClientRect();
@@ -52,10 +61,10 @@ const MagneticButton = ({ children, className = '', onClick, type = 'button', hr
       el.removeEventListener('mouseleave', handleMouseLeave);
       el.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, []);
+  }, [disabled]);
 
   const Component = href ? 'a' : 'button';
-  const props = href ? { href } : { type, onClick };
+  const props = href ? { href } : { type, onClick, disabled };
 
   return (
     <Component
@@ -66,11 +75,13 @@ const MagneticButton = ({ children, className = '', onClick, type = 'button', hr
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'box-shadow 0.5s ease, border-color 0.5s ease',
         transformStyle: 'preserve-3d',
+        ...style,
       }}
       {...props}
+      {...rest}
     >
       {/* Subtle bloom glow backplate */}
       <span

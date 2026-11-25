@@ -97,11 +97,29 @@ export const getUserCart = async (userId, txOrDb = db) => {
     .where(eq(cartItems.cart_id, cart.id))
     .orderBy(asc(cartItems.id));
 
+  // Promotional Rule: 1 complimentary Evo-Bottle (any shade) per Evo-Air Device
+  const deviceCount = rows.reduce(
+    (acc, row) => (row.product_slug === 'evoair' ? acc + (row.quantity || 1) : acc),
+    0
+  );
+  let remainingFreeBottles = deviceCount;
+
   const items = rows.map((row) => {
     // Backorder Mode: Active products are always purchaseable
     const isAvailable = row.variant_is_active && row.product_is_active;
     const maxQuantity = isAvailable ? 10 : 0;
-    const lineTotal = isAvailable ? row.price_paise * row.quantity : 0;
+    const isBottle =
+      row.product_slug === 'evo-bottles' ||
+      row.sku?.includes('BTL') ||
+      row.sku?.includes('BOTTLE');
+
+    let freeQty = 0;
+    if (isBottle && remainingFreeBottles > 0) {
+      freeQty = Math.min(row.quantity, remainingFreeBottles);
+      remainingFreeBottles -= freeQty;
+    }
+    const paidQty = row.quantity - freeQty;
+    const lineTotal = isAvailable ? row.price_paise * paidQty : 0;
     const originalLineTotal = isAvailable ? row.price_paise * row.quantity : 0;
 
     return {
@@ -122,16 +140,21 @@ export const getUserCart = async (userId, txOrDb = db) => {
       available: isAvailable,
       in_stock: row.stock_qty > 0,
       max_quantity_available: maxQuantity,
-      is_complimentary: false,
-      free_quantity: 0,
-      paid_quantity: row.quantity,
+      is_complimentary: freeQty > 0,
+      free_quantity: freeQty,
+      paid_quantity: paidQty,
       original_line_total_paise: originalLineTotal,
       original_line_total_rupees: Math.round(originalLineTotal / 100),
       formatted_original_line_total: formatInr(originalLineTotal),
       line_total_paise: lineTotal,
       line_total_rupees: Math.round(lineTotal / 100),
       formatted_line_total: formatInr(lineTotal),
-      promo_badge: null,
+      promo_badge:
+        freeQty > 0
+          ? freeQty === row.quantity
+            ? '100% Free with Evo-Air Device'
+            : `${freeQty} Free with Device, ${paidQty} Paid`
+          : null,
     };
   });
 
@@ -194,45 +217,47 @@ export const calculateGuestCart = async (guestItems = []) => {
     const itemSlug = item.productSlug || item.product_slug || '';
     const shade = item.shadeCode || item.shade_code;
 
-    const match = allVariants.find((v) => {
-      // 1. Direct Variant ID Match
-      if (typeof vId === 'string' && v.variant_id === vId) return true;
+    // Priority-ordered variant matching so hardware/generic SKUs never get shadowed by DB row order
+    let match =
+      (typeof vId === 'string' && allVariants.find((v) => v.variant_id === vId)) ||
+      (item.sku && allVariants.find((v) => v.sku === item.sku));
 
-      // 2. Exact SKU Match
-      if (item.sku && v.sku === item.sku) return true;
+    if (!match && (item.isDevice || item.id === 'evo-air-device' || itemSlug === 'evoair' || item.id === 'evoair')) {
+      const evoVariants = allVariants.filter((v) => v.product_slug === 'evoair');
+      match =
+        (item.isDevice || item.id === 'evo-air-device'
+          ? evoVariants.find((v) => v.sku === 'EVO-AIR-DEVICE')
+          : null) ||
+        (shade ? evoVariants.find((v) => v.shade_code === shade) : null) ||
+        evoVariants.find((v) => v.sku === 'EVO-AIR-DEVICE') ||
+        evoVariants.find((v) => v.sku === 'EVO-01');
+    }
 
-      // 3. EvoAir Device Matching
-      if (item.isDevice || item.id === 'evo-air-device' || itemSlug === 'evoair' || item.id === 'evoair') {
-        if (v.product_slug === 'evoair') {
-          if (v.sku === 'EVO-AIR-DEVICE') return true;
-          if (shade && v.shade_code === shade) return true;
-          if (!shade && v.sku === 'EVO-01') return true;
-        }
-      }
+    if (!match && (itemSlug === 'evo-bottles' || item.id?.startsWith('evo-bottles') || item.id === 'evobottles')) {
+      const bottleVariants = allVariants.filter((v) => v.product_slug === 'evo-bottles');
+      match =
+        (item.formulaId && shade
+          ? bottleVariants.find((v) => v.formula?.toLowerCase() === item.formulaId.toLowerCase() && v.shade_code === shade)
+          : null) ||
+        (shade ? bottleVariants.find((v) => v.shade_code === shade) : null) ||
+        bottleVariants.find((v) => v.sku === 'EVO-BOTTLE-20') ||
+        bottleVariants[0];
+    }
 
-      // 4. Evo-Bottles Matching
-      if (itemSlug === 'evo-bottles' || item.id?.startsWith('evo-bottles') || item.id === 'evobottles') {
-        if (v.product_slug === 'evo-bottles') {
-          if (shade && v.shade_code === shade) return true;
-          if (!shade && (v.sku === 'EVO-BOTTLE-20' || v.sku?.includes('BTL'))) return true;
-        }
-      }
+    if (!match && (itemSlug === 'evo-fills' || item.id?.startsWith('evofills') || item.id === 'evofills')) {
+      const fillVariants = allVariants.filter((v) => v.product_slug === 'evo-fills');
+      match =
+        (item.formulaId && shade
+          ? fillVariants.find((v) => v.formula?.toLowerCase() === item.formulaId.toLowerCase() && v.shade_code === shade)
+          : null) ||
+        (shade ? fillVariants.find((v) => v.shade_code === shade) : null) ||
+        fillVariants.find((v) => v.sku === 'EVO-FILL-10') ||
+        fillVariants.find((v) => v.sku?.includes('FILL'));
+    }
 
-      // 5. Evo-Fills Matching
-      if (itemSlug === 'evo-fills' || item.id?.startsWith('evofills') || item.id === 'evofills') {
-        if (v.product_slug === 'evo-fills') {
-          if (shade && v.shade_code === shade) return true;
-          if (!shade && v.sku?.includes('FILL')) return true;
-        }
-      }
-
-      // 6. Generic Fallback: Match by shade within target product slug
-      if (shade && itemSlug && v.product_slug === itemSlug && v.shade_code === shade) {
-        return true;
-      }
-
-      return false;
-    });
+    if (!match && shade && itemSlug) {
+      match = allVariants.find((v) => v.product_slug === itemSlug && v.shade_code === shade);
+    }
 
     if (match) {
       const quantity = Math.max(1, Math.min(10, item.quantity || 1));
@@ -243,11 +268,24 @@ export const calculateGuestCart = async (guestItems = []) => {
     }
   }
 
+  // Promotional Rule: 1 complimentary Evo-Bottle (any shade) per Evo-Air Device
+  let remainingFreeBottles = deviceCount;
   const items = [];
 
   for (const { match, quantity } of matchedEntries) {
     const isAvailable = match.variant_is_active && match.product_is_active;
-    const lineTotal = isAvailable ? match.price_paise * quantity : 0;
+    const isBottle =
+      match.product_slug === 'evo-bottles' ||
+      match.sku?.includes('BTL') ||
+      match.sku?.includes('BOTTLE');
+
+    let freeQty = 0;
+    if (isBottle && remainingFreeBottles > 0) {
+      freeQty = Math.min(quantity, remainingFreeBottles);
+      remainingFreeBottles -= freeQty;
+    }
+    const paidQty = quantity - freeQty;
+    const lineTotal = isAvailable ? match.price_paise * paidQty : 0;
     const originalLineTotal = isAvailable ? match.price_paise * quantity : 0;
 
     items.push({
@@ -267,16 +305,21 @@ export const calculateGuestCart = async (guestItems = []) => {
       quantity,
       available: isAvailable,
       in_stock: match.stock_qty > 0,
-      is_complimentary: false,
-      free_quantity: 0,
-      paid_quantity: quantity,
+      is_complimentary: freeQty > 0,
+      free_quantity: freeQty,
+      paid_quantity: paidQty,
       original_line_total_paise: originalLineTotal,
       original_line_total_rupees: Math.round(originalLineTotal / 100),
       formatted_original_line_total: formatInr(originalLineTotal),
       line_total_paise: lineTotal,
       line_total_rupees: Math.round(lineTotal / 100),
       formatted_line_total: formatInr(lineTotal),
-      promo_badge: null,
+      promo_badge:
+        freeQty > 0
+          ? freeQty === quantity
+            ? '100% Free with Evo-Air Device'
+            : `${freeQty} Free with Device, ${paidQty} Paid`
+          : null,
     });
   }
 

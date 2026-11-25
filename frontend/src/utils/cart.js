@@ -82,6 +82,12 @@ export const resolveVariantId = (item) => {
     for (const prod of targetProducts) {
       if (!prod.variants || !prod.variants.length) continue;
 
+      // Standalone Device Hardware priority (never match device to shaded variant when isDevice is set)
+      if (prod.slug === 'evoair' && (item.isDevice || item.id === 'evo-air-device' || sku === 'EVO-AIR-DEVICE')) {
+        const hwMatch = prod.variants.find((v) => v.sku === 'EVO-AIR-DEVICE');
+        if (hwMatch) return hwMatch.id;
+      }
+
       // Exact Match: SKU
       if (sku) {
         const match = prod.variants.find((v) => v.sku === sku);
@@ -381,6 +387,9 @@ export const useCart = (isAuthenticated = false, authReady = true) => {
           variantId: resolveVariantId(item),
           id: item.id,
           sku: item.sku,
+          productSlug: item.productSlug || item.product_slug,
+          formulaId: item.formulaId || item.formula,
+          isDevice: Boolean(item.isDevice),
           shadeCode: item.shadeCode || item.shade_code,
           quantity: item.quantity || 1,
         })),
@@ -394,22 +403,47 @@ export const useCart = (isAuthenticated = false, authReady = true) => {
           setGuestPricing(data.pricing);
           setIsBackendOffline(false);
           setBackendError(null);
-          // Enrich local items with server prices
+          // Enrich local items strictly by variantId or (product_slug + shade_code)
           if (Array.isArray(data.items) && data.items.length > 0) {
             setItems((prev) =>
               prev.map((it) => {
+                const targetVId = resolveVariantId(it);
+                const itSlug =
+                  it.productSlug ||
+                  it.product_slug ||
+                  (it.isDevice || it.id === 'evo-air-device'
+                    ? 'evoair'
+                    : it.id?.startsWith('evo-bottles')
+                    ? 'evo-bottles'
+                    : it.id?.startsWith('evofills')
+                    ? 'evo-fills'
+                    : undefined);
+                const itShade = it.shadeCode || it.shade_code;
+
                 const match = data.items.find(
                   (ci) =>
-                    ci.variant_id === it.variantId ||
+                    (targetVId && ci.variant_id === targetVId) ||
                     ci.id === it.id ||
-                    (ci.shade_code && ci.shade_code === (it.shadeCode || it.shade_code))
+                    (itSlug &&
+                      ci.product_slug === itSlug &&
+                      itShade &&
+                      ci.shade_code === itShade)
                 );
                 if (match) {
                   return {
                     ...it,
+                    variantId: match.variant_id,
+                    product_slug: match.product_slug,
+                    product_name: match.product_name,
+                    formula: match.formula,
+                    shade_name: match.shade_name,
+                    shade_code: match.shade_code,
+                    color_hex: match.color_hex,
                     price_paise: match.price_paise,
+                    original_line_total_paise: match.original_line_total_paise,
                     line_total_paise: match.line_total_paise,
                     formatted_price: match.formatted_price,
+                    formatted_original_line_total: match.formatted_original_line_total,
                     formatted_line_total: match.formatted_line_total,
                     is_complimentary: match.is_complimentary,
                     free_quantity: match.free_quantity,

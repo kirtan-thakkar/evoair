@@ -495,11 +495,12 @@ const CheckoutPage = () => {
                         {displayItems.map((item, idx) => {
                           const itemName = item.product_name || item.name || 'Evoluir Product';
                           const itemQty = item.quantity || 1;
-                          const itemPrice = item.line_total_paise
-                            ? Math.round(item.line_total_paise / 100)
-                            : item.price_paise
-                            ? Math.round((item.price_paise * itemQty) / 100)
-                            : (item.numericPrice || 0) * itemQty;
+                          const itemPrice =
+                            item.line_total_paise !== undefined && item.line_total_paise !== null
+                              ? Math.round(item.line_total_paise / 100)
+                              : item.price_paise !== undefined && item.price_paise !== null
+                              ? Math.round((item.price_paise * itemQty) / 100)
+                              : (item.numericPrice || 0) * itemQty;
                           const shadeName = item.shade_name || item.shadeCode;
 
                           return (
@@ -511,10 +512,12 @@ const CheckoutPage = () => {
                                 </span>
                               </div>
                               <span className="checkout-item-price">
-                                {item.is_complimentary && itemPrice === 0 ? (
+                                {item.is_complimentary ? (
                                   <span style={{ color: '#42fcff', fontWeight: 600 }}>
-                                    <s style={{ opacity: 0.5, marginRight: '4px', color: '#a0a0a5' }}>₹1,799</s>
-                                    ₹0
+                                    <s style={{ opacity: 0.5, marginRight: '6px', color: '#a0a0a5' }}>
+                                      ₹{(1799 * itemQty).toLocaleString('en-IN')}
+                                    </s>
+                                    {itemPrice === 0 ? '₹0 (FREE)' : `₹${itemPrice.toLocaleString('en-IN')}`}
                                   </span>
                                 ) : (
                                   `₹${itemPrice.toLocaleString('en-IN')}`

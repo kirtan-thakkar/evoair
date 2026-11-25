@@ -42,9 +42,12 @@ export const cartCalculateSchema = z.object({
   items: z
     .array(
       z.object({
-        variantId: z.string().optional(),
+        variantId: z.string().nullish(),
         id: z.string().optional(),
         sku: z.string().optional(),
+        productSlug: z.string().optional(),
+        formulaId: z.string().optional(),
+        isDevice: z.boolean().optional(),
         shadeCode: z.string().optional(),
         quantity: z.number().int().min(1).max(10).default(1),
       })

@@ -97,14 +97,14 @@ const seed = async () => {
         id: SEED_PRODUCT_IDS.EVO_BOTTLES,
         name: 'Evo-Bottles',
         slug: 'evo-bottles',
-        description: 'Pack of 20 refillable capsules compatible with your personal formulas.',
+        description: 'Single refillable capsule bottle compatible with your personal formulas.',
         is_active: true,
       })
       .onConflictDoUpdate({
         target: products.slug,
         set: {
           name: 'Evo-Bottles',
-          description: 'Pack of 20 refillable capsules compatible with your personal formulas.',
+          description: 'Single refillable capsule bottle compatible with your personal formulas.',
         },
       });
 
@@ -278,13 +278,13 @@ const seed = async () => {
       });
     });
 
-    // ── Evo-Bottles Standard Pack of 20 (₹1,799) ──
+    // ── Evo-Bottles Standard Single Bottle (₹1,799) ──
     allVariants.push({
       id: '11111111-1111-4111-8111-000000000052',
       product_id: SEED_PRODUCT_IDS.EVO_BOTTLES,
       formula: 'accessories',
-      shade_name: 'Capsules (Pack of 20)',
-      shade_code: 'BOTTLE-20',
+      shade_name: 'Single Refillable Bottle',
+      shade_code: 'BOTTLE-01',
       color_hex: '#ffffff',
       sku: 'EVO-BOTTLE-20',
       price_paise: 179900,
