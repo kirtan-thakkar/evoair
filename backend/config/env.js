@@ -31,6 +31,13 @@ const envSchema = z
     RAZORPAY_KEY_ID: z.string().optional(),
     RAZORPAY_KEY_SECRET: z.string().optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+    BACKEND_PUBLIC_URL: z.string().trim().default('http://localhost:5000'),
+    FRONTEND_URL: z.string().trim().default('http://localhost:5173'),
+    PAYU_ENV: z.enum(['test', 'production']).default('test'),
+    PAYU_MERCHANT_KEY: z.string().trim().optional(),
+    PAYU_MERCHANT_SALT: z.string().trim().optional(),
+    PAYU_MERCHANT_ID: z.string().trim().optional(),
+    PAYU_WEBHOOK_SECRET: z.string().trim().optional(),
   })
   .refine((data) => data.JWT_SECRET !== data.JWT_REFRESH_SECRET, {
     message: 'JWT_SECRET and JWT_REFRESH_SECRET must be distinct',
